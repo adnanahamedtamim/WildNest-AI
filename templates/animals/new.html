@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Add Animal — WildNest{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <a href="{{ url_for('auth.dashboard_redirect') }}" class="btn btn-sm wn-btn-outline">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h4 class="fw-bold mb-0">Add Animal</h4>
+                <small class="text-muted">Create a living profile that follows this animal forever.</small>
+            </div>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" novalidate>
+
+            <!-- IDENTITY -->
+            <div class="wn-card p-4 mb-3">
+                <h6 class="fw-bold mb-3"><i class="bi bi-tag me-2 wn-green"></i>Identity</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Name *</label>
+                        <input type="text" name="name" class="form-control wn-input"
+                               placeholder="e.g. Rex" required autofocus>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Species *</label>
+                        <input type="text" name="species" class="form-control wn-input"
+                               placeholder="e.g. Iguana iguana" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Common Name</label>
+                        <input type="text" name="common_name" class="form-control wn-input"
+                               placeholder="e.g. Green Iguana">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-muted small">Age (years)</label>
+                        <input type="number" step="0.1" name="age_years" class="form-control wn-input"
+                               placeholder="3">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-muted small">Sex</label>
+                        <select name="sex" class="form-select wn-input">
+                            <option value="">—</option>
+                            <option>Male</option>
+                            <option>Female</option>
+                            <option>Unknown</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ORIGIN -->
+            <div class="wn-card p-4 mb-3">
+                <h6 class="fw-bold mb-3"><i class="bi bi-geo-alt me-2 wn-green"></i>Origin</h6>
+                <div class="d-flex gap-3 mb-3">
+                    <label class="wn-radio-card flex-fill" for="origin-rescue">
+                        <input type="radio" name="origin" id="origin-rescue" value="rescue" checked>
+                        <div class="fw-semibold">🏥 Rescue</div>
+                        <small class="text-muted">Rescued / rehabilitated animal</small>
+                    </label>
+                    <label class="wn-radio-card flex-fill" for="origin-personal">
+                        <input type="radio" name="origin" id="origin-personal" value="personal">
+                        <div class="fw-semibold">🏡 Personal</div>
+                        <small class="text-muted">Animal I already own</small>
+                    </label>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label text-muted small">Rescue / Acquired Date</label>
+                        <input type="date" name="rescue_date" class="form-control wn-input">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label text-muted small">Location</label>
+                        <input type="text" name="rescue_location" class="form-control wn-input"
+                               placeholder="e.g. Green Valley Wildlife Center">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label text-muted small">Reason / Background</label>
+                        <textarea name="rescue_reason" rows="2" class="form-control wn-input"
+                                  placeholder="How this animal came into care..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARE PROFILE -->
+            <div class="wn-card p-4 mb-3">
+                <h6 class="fw-bold mb-3"><i class="bi bi-heart-pulse me-2 wn-green"></i>Care Profile</h6>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label text-muted small">Medical History</label>
+                        <textarea name="medical_history" rows="2" class="form-control wn-input"
+                                  placeholder="Treatments, conditions, vaccinations..."></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Stress Triggers</label>
+                        <textarea name="stress_triggers" rows="2" class="form-control wn-input"
+                                  placeholder="e.g. loud noise, temps below 80°F, handling..."></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Dietary Requirements</label>
+                        <textarea name="dietary_requirements" rows="2" class="form-control wn-input"
+                                  placeholder="e.g. leafy greens daily, calcium supplement..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PHOTO -->
+            <div class="wn-card p-4 mb-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-image me-2 wn-green"></i>Photo</h6>
+                <input type="file" name="photo" accept="image/*"
+                       class="form-control wn-input" id="photoInput">
+                <div class="mt-3 d-none" id="previewWrap">
+                    <img id="preview" class="rounded" style="max-height:180px; object-fit:cover;">
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn wn-btn-primary px-4">
+                    <i class="bi bi-check-lg me-2"></i>Create Profile
+                </button>
+                <a href="{{ url_for('auth.dashboard_redirect') }}" class="btn wn-btn-outline px-4">Cancel</a>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const photoInput = document.getElementById('photoInput');
+    const preview = document.getElementById('preview');
+    const previewWrap = document.getElementById('previewWrap');
+    photoInput.addEventListener('change', function () {
+        const file = this.files[0];
+        if (file) {
+            preview.src = URL.createObjectURL(file);
+            previewWrap.classList.remove('d-none');
+        }
+    });
+</script>
+{% endblock %}

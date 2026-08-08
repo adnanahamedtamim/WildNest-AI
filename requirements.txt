@@ -1,0 +1,11 @@
+flask
+flask-login
+flask-sqlalchemy
+python-dotenv
+plotly
+google-generativeai
+chromadb
+sentence-transformers
+pillow
+qrcode
+werkzeug

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}{{ animal.name }} — WildNest{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+
+        <!-- BACK -->
+        <a href="{{ url_for('auth.dashboard_redirect') }}" class="btn btn-sm wn-btn-outline mb-3">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+
+        <!-- HERO -->
+        <div class="wn-card mb-4">
+            <div class="p-4 d-flex flex-column flex-md-row gap-4 align-items-center align-items-md-start">
+                {% if animal.photo_path %}
+                <img src="{{ url_for('static', filename='uploads/' + animal.photo_path) }}"
+                     class="wn-profile-photo" alt="{{ animal.name }}">
+                {% else %}
+                <div class="wn-profile-photo-placeholder">🐾</div>
+                {% endif %}
+
+                <div class="flex-fill text-center text-md-start">
+                    <div class="d-flex align-items-center gap-2 justify-content-center justify-content-md-start mb-1">
+                        <h3 class="fw-bold mb-0">{{ animal.name }}</h3>
+                        {% if animal.origin == 'rescue' %}
+                        <span class="badge wn-badge-green">🏥 Rescue</span>
+                        {% else %}
+                        <span class="badge wn-badge-blue">🏡 Personal</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-muted mb-2">
+                        <em>{{ animal.species }}</em>
+                        {% if animal.common_name %} · {{ animal.common_name }}{% endif %}
+                    </p>
+
+                    <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-start mb-3">
+                        {% if animal.age_years %}
+                        <span class="wn-chip"><i class="bi bi-calendar3 me-1"></i>{{ animal.age_years }} yrs</span>
+                        {% endif %}
+                        {% if animal.sex %}
+                        <span class="wn-chip"><i class="bi bi-gender-ambiguous me-1"></i>{{ animal.sex }}</span>
+                        {% endif %}
+                        {% if animal.status == 'in_care' %}
+                        <span class="wn-chip"><i class="bi bi-heart-pulse me-1"></i>In Care</span>
+                        {% elif animal.status == 'adopted' %}
+                        <span class="wn-chip"><i class="bi bi-house-heart me-1"></i>Adopted</span>
+                        {% elif animal.status == 'listed' %}
+                        <span class="wn-chip"><i class="bi bi-megaphone me-1"></i>Listed for Rehoming</span>
+                        {% endif %}
+                        <span class="wn-chip"><i class="bi bi-clock-history me-1"></i>{{ animal.env_logs|length }} env logs</span>
+                    </div>
+
+                    <!-- ACTION BUTTONS (placeholders for future steps) -->
+                    <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-start">
+                        {% if is_owner %}
+                        <a href="#" class="btn btn-sm wn-btn-primary">
+                            <i class="bi bi-clipboard-plus me-1"></i>Log Data
+                        </a>
+                        <a href="#" class="btn btn-sm wn-btn-outline">
+                            <i class="bi bi-megaphone me-1"></i>List for Rehoming
+                        </a>
+                        <a href="#" class="btn btn-sm wn-btn-outline">
+                            <i class="bi bi-qr-code me-1"></i>QR Passport
+                        </a>
+                        {% endif %}
+                        {% if is_creator and not is_owner %}
+                        <span class="badge wn-badge-neutral align-self-center">
+                            <i class="bi bi-eye me-1"></i>Read-only (you rescued this animal)
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DETAILS GRID -->
+        <div class="row g-4">
+
+            <!-- LEFT: care info -->
+            <div class="col-lg-7">
+                <div class="wn-card p-4 mb-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-clipboard2-pulse me-2 wn-green"></i>Care Profile</h6>
+
+                    <div class="wn-detail-block">
+                        <div class="wn-detail-label">Medical History</div>
+                        <div class="wn-detail-value">{{ animal.medical_history or 'No records yet.' }}</div>
+                    </div>
+                    <div class="wn-detail-block">
+                        <div class="wn-detail-label">⚠️ Stress Triggers</div>
+                        <div class="wn-detail-value">{{ animal.stress_triggers or 'None recorded.' }}</div>
+                    </div>
+                    <div class="wn-detail-block">
+                        <div class="wn-detail-label">Dietary Requirements</div>
+                        <div class="wn-detail-value">{{ animal.dietary_requirements or 'Not specified.' }}</div>
+                    </div>
+                </div>
+
+                <div class="wn-card p-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-geo-alt me-2 wn-green"></i>Origin & Background</h6>
+                    <div class="wn-detail-block">
+                        <div class="wn-detail-label">Date</div>
+                        <div class="wn-detail-value">
+                            {{ animal.rescue_date.strftime('%B %d, %Y') if animal.rescue_date else 'Not recorded.' }}
+                        </div>
+                    </div>
+                    <div class="wn-detail-block">
+                        <div class="wn-detail-label">Location</div>
+                        <div class="wn-detail-value">{{ animal.rescue_location or 'Not recorded.' }}</div>
+                    </div>
+                    <div class="wn-detail-block">
+                        <div class="wn-detail-label">Background</div>
+                        <div class="wn-detail-value">{{ animal.rescue_reason or 'No background provided.' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: quick facts + upcoming features -->
+            <div class="col-lg-5">
+                <div class="wn-card p-4 mb-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-info-circle me-2 wn-green"></i>Quick Facts</h6>
+                    <div class="d-flex justify-content-between py-2 wn-fact-row">
+                        <span class="text-muted">Created by</span>
+                        <span>{{ animal.creator.name }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 wn-fact-row">
+                        <span class="text-muted">Current owner</span>
+                        <span>{{ animal.owner.name }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 wn-fact-row">
+                        <span class="text-muted">Added</span>
+                        <span>{{ animal.created_at.strftime('%b %d, %Y') }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2">
+                        <span class="text-muted">Profile ID</span>
+                        <span class="text-muted">#{{ '%05d' % animal.id }}</span>
+                    </div>
+                </div>
+
+                <!-- Placeholders for features coming in next steps -->
+                <div class="wn-card p-4 wn-coming-soon">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-graph-up me-2 wn-green"></i>Environmental Data</h6>
+                    <div class="text-center py-3">
+                        <i class="bi bi-bar-chart-line" style="font-size:2rem; opacity:0.2;"></i>
+                        <p class="text-muted small mt-2 mb-0">
+                            Interactive charts appear here once<br>environmental data is logged.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+{% endblock %}

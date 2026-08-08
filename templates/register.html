@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Register — WildNest{% endblock %}
+
+{% block content %}
+<div class="wn-auth-wrap">
+    <div class="wn-auth-inner" style="max-width:520px;">
+
+        <div class="text-center mb-3">
+            <div style="font-size:2.4rem;">🐾</div>
+            <h2 class="fw-bold wn-green mt-1 mb-1">Join WildNest</h2>
+            <p class="text-muted small mb-0">Create your account to get started.</p>
+        </div>
+
+        <div class="wn-card p-4">
+            <form method="POST" novalidate>
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Full Name</label>
+                    <input type="text" name="name" class="form-control wn-input"
+                           placeholder="Your full name" required autofocus>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Email Address</label>
+                    <input type="email" name="email" class="form-control wn-input"
+                           placeholder="you@example.com" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Organization <span class="text-muted">(optional)</span></label>
+                    <input type="text" name="organization" class="form-control wn-input"
+                           placeholder="e.g. Green Valley Wildlife Center — leave blank if personal">
+                    <small class="text-muted" style="font-size:0.72rem;">
+                        If you're part of a rescue or rehabilitation center, add its name.
+                    </small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small">Password</label>
+                    <input type="password" name="password" class="form-control wn-input"
+                           placeholder="Minimum 6 characters" required>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label text-muted small">Confirm Password</label>
+                    <input type="password" name="confirm_password" class="form-control wn-input"
+                           placeholder="Repeat your password" required>
+                </div>
+                <button type="submit" class="btn wn-btn-primary w-100 py-2">
+                    <i class="bi bi-person-plus me-2"></i>Create Account
+                </button>
+            </form>
+            <hr class="my-3 wn-divider">
+            <p class="text-center text-muted small mb-0">
+                Already have an account? <a href="{{ url_for('auth.login') }}" class="wn-link">Sign in</a>
+            </p>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+

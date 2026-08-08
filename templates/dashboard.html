@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}My Animals — WildNest{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">My Animals</h4>
+        <small class="text-muted">Welcome back, {{ current_user.name }}
+            {% if current_user.organization %} · {{ current_user.organization }}{% endif %}
+        </small>
+    </div>
+    {% if cards %}
+    <a href="{{ url_for('animals.new') }}" class="btn wn-btn-primary">
+        <i class="bi bi-plus-lg me-2"></i>Add Animal
+    </a>
+    {% endif %}
+</div>
+
+{% if cards %}
+<div class="row g-4">
+    {% for item in cards %}
+    <div class="col-md-6 col-lg-4">
+        <div class="wn-card wn-animal-card h-100">
+            <div class="p-4">
+
+                <!-- Header -->
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    {% if item.animal.photo_path %}
+                    <img src="{{ url_for('static', filename='uploads/' + item.animal.photo_path) }}"
+                         class="wn-card-img" alt="{{ item.animal.name }}">
+                    {% else %}
+                    <div class="wn-card-img-placeholder">🐾</div>
+                    {% endif %}
+                    <div class="flex-fill">
+                        <div class="d-flex align-items-center gap-2">
+                            <h6 class="fw-bold mb-0">{{ item.animal.name }}</h6>
+                            {% if item.animal.origin == 'rescue' %}
+                            <span class="badge wn-badge-green">Rescue</span>
+                            {% else %}
+                            <span class="badge wn-badge-blue">Personal</span>
+                            {% endif %}
+                        </div>
+                        <small class="text-muted"><em>{{ item.animal.common_name or item.animal.species }}</em></small>
+                    </div>
+                </div>
+
+                <!-- Status line -->
+                {% if item.is_creator_only %}
+                <div class="mb-3">
+                    <span class="badge wn-badge-neutral">
+                        <i class="bi bi-eye me-1"></i>Rehomed — monitoring access
+                    </span>
+                </div>
+                {% elif item.in_monitoring %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="text-muted">Transition Period</small>
+                        <small class="wn-green fw-semibold">Day {{ item.days_since_handover }} / 30</small>
+                    </div>
+                    <div class="progress wn-progress">
+                        <div class="progress-bar wn-progress-bar"
+                             style="width: {{ [item.days_since_handover / 30 * 100, 100]|min|int }}%;"></div>
+                    </div>
+                </div>
+                {% elif item.animal.status == 'in_care' %}
+                <div class="mb-3">
+                    <span class="badge wn-badge-green"><i class="bi bi-heart-pulse me-1"></i>In Care</span>
+                </div>
+                {% elif item.animal.status == 'listed' %}
+                <div class="mb-3">
+                    <span class="badge wn-badge-yellow"><i class="bi bi-megaphone me-1"></i>Listed for Rehoming</span>
+                </div>
+                {% else %}
+                <div class="mb-3">
+                    <span class="badge wn-badge-green"><i class="bi bi-check-circle me-1"></i>Settled In</span>
+                </div>
+                {% endif %}
+
+                <!-- Latest metrics -->
+                {% if item.latest_metric %}
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="wn-mini-stat">
+                            <div class="wn-mini-label">Feeding</div>
+                            <div class="wn-mini-stars">
+                                {% for i in range(5) %}{% if i < item.latest_metric.feeding_habit %}★{% else %}☆{% endif %}{% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="wn-mini-stat">
+                            <div class="wn-mini-label">Activity</div>
+                            <div class="wn-mini-stars">
+                                {% for i in range(5) %}{% if i < item.latest_metric.activity_level %}★{% else %}☆{% endif %}{% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="wn-empty-metrics mb-3">
+                    <i class="bi bi-clipboard-data me-2 text-muted"></i>
+                    <small class="text-muted">No metrics logged yet.</small>
+                </div>
+                {% endif %}
+
+                <!-- Actions -->
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('animals.profile', animal_id=item.animal.id) }}"
+                       class="btn btn-sm wn-btn-primary flex-fill">
+                        <i class="bi bi-person-lines-fill me-1"></i>Profile
+                    </a>
+                    {% if item.is_owner %}
+                    <a href="#" class="btn btn-sm wn-btn-outline flex-fill">
+                        <i class="bi bi-pencil me-1"></i>Log
+                    </a>
+                    <a href="#" class="btn btn-sm wn-btn-outline">
+                        <i class="bi bi-robot"></i>
+                    </a>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="text-center py-5 mt-4">
+    <div style="font-size:4rem;opacity:0.2;">🌿</div>
+    <h5 class="text-muted mt-3">No animals yet</h5>
+    <p class="text-muted small">
+        Add an animal you've rescued or already own to start building its living profile —<br>
+        or browse the rehoming feed to adopt one.
+    </p>
+    <a href="{{ url_for('animals.new') }}" class="btn wn-btn-primary mt-2">
+        <i class="bi bi-plus-lg me-2"></i>Add Your First Animal
+    </a>
+</div>
+{% endif %}
+{% endblock %}
