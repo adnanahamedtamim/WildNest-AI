@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Log Data — {{ animal.name }} — WildNest{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <a href="{{ url_for('animals.profile', animal_id=animal.id) }}" class="btn btn-sm wn-btn-outline">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h4 class="fw-bold mb-0">Log Data — {{ animal.name }}</h4>
+                <small class="text-muted">Record today's environment, condition, and behaviour.</small>
+            </div>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" novalidate>
+
+            <!-- ENVIRONMENT -->
+            <div class="wn-card p-4 mb-3">
+                <h6 class="fw-bold mb-3"><i class="bi bi-thermometer-half me-2 wn-green"></i>Environment</h6>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label text-muted small">🌡️ Temperature (°F)</label>
+                        <input type="number" step="0.1" name="temperature_f" class="form-control wn-input" placeholder="95">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-muted small">💧 Humidity (%)</label>
+                        <input type="number" step="0.1" name="humidity_pct" class="form-control wn-input" placeholder="60">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label text-muted small">💡 Lighting (hours)</label>
+                        <input type="number" step="0.1" name="lighting_hours" class="form-control wn-input" placeholder="12">
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONDITION -->
+            <div class="wn-card p-4 mb-3">
+                <h6 class="fw-bold mb-3"><i class="bi bi-heart-pulse me-2 wn-green"></i>Condition</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">🍽️ Feeding amount (g)</label>
+                        <input type="number" step="0.1" name="feeding_amount_g" class="form-control wn-input" placeholder="40">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">⚖️ Weight (g)</label>
+                        <input type="number" step="0.1" name="weight_g" class="form-control wn-input" placeholder="3200">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">😰 Stress level: <span id="stressVal" class="wn-green fw-bold">3</span> / 5</label>
+                        <input type="range" name="stress_level" min="1" max="5" value="3" class="form-range wn-range" id="stressRange">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">🏃 Activity level: <span id="activityVal" class="wn-green fw-bold">3</span> / 5</label>
+                        <input type="range" name="activity_level" min="1" max="5" value="3" class="form-range wn-range" id="activityRange">
+                    </div>
+                </div>
+            </div>
+
+            <!-- BEHAVIOUR MEDIA -->
+            <div class="wn-card p-4 mb-3">
+                <h6 class="fw-bold mb-3"><i class="bi bi-camera-video me-2 wn-green"></i>Behaviour Photo / Video <span class="text-muted small">(optional)</span></h6>
+                <p class="text-muted small mb-2">Capture how the animal is behaving right now — a photo or a short video clip.</p>
+                <input type="file" name="media" accept="image/*,video/*" class="form-control wn-input" id="mediaInput">
+                <div class="mt-3 d-none" id="previewWrap">
+                    <img id="imgPreview" class="rounded d-none" style="max-height:200px; object-fit:cover;">
+                    <video id="vidPreview" class="rounded d-none" style="max-height:200px;" controls></video>
+                </div>
+            </div>
+
+            <!-- NOTES -->
+            <div class="wn-card p-4 mb-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-journal-text me-2 wn-green"></i>Notes</h6>
+                <textarea name="notes" rows="2" class="form-control wn-input"
+                          placeholder="e.g. Basked all morning, ate well, active after feeding..."></textarea>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn wn-btn-primary px-4">
+                    <i class="bi bi-check-lg me-2"></i>Save Entry
+                </button>
+                <a href="{{ url_for('animals.profile', animal_id=animal.id) }}" class="btn wn-btn-outline px-4">Cancel</a>
+            </div>
+
+        </form>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // range value display
+    const stressRange = document.getElementById('stressRange');
+    const activityRange = document.getElementById('activityRange');
+    stressRange.addEventListener('input', () => document.getElementById('stressVal').textContent = stressRange.value);
+    activityRange.addEventListener('input', () => document.getElementById('activityVal').textContent = activityRange.value);
+
+    // media preview (image or video)
+    const mediaInput = document.getElementById('mediaInput');
+    const previewWrap = document.getElementById('previewWrap');
+    const imgPreview = document.getElementById('imgPreview');
+    const vidPreview = document.getElementById('vidPreview');
+    mediaInput.addEventListener('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        previewWrap.classList.remove('d-none');
+        if (file.type.startsWith('video')) {
+            vidPreview.src = url; vidPreview.classList.remove('d-none'); imgPreview.classList.add('d-none');
+        } else {
+            imgPreview.src = url; imgPreview.classList.remove('d-none'); vidPreview.classList.add('d-none');
+        }
+    });
+</script>
+{% endblock %}

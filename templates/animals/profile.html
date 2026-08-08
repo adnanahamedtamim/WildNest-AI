@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 {% block title %}{{ animal.name }} — WildNest{% endblock %}
 
+{% block extra_head %}
+{% if charts %}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+{% endif %}
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-10">
@@ -54,7 +60,7 @@
                     <!-- ACTION BUTTONS (placeholders for future steps) -->
                     <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-start">
                         {% if is_owner %}
-                        <a href="#" class="btn btn-sm wn-btn-primary">
+                        <a href="{{ url_for('animals.log_env', animal_id=animal.id) }}" class="btn btn-sm wn-btn-primary">
                             <i class="bi bi-clipboard-plus me-1"></i>Log Data
                         </a>
                         <a href="#" class="btn btn-sm wn-btn-outline">
@@ -137,18 +143,89 @@
                     </div>
                 </div>
 
-                <!-- Placeholders for features coming in next steps -->
-                <div class="wn-card p-4 wn-coming-soon">
-                    <h6 class="fw-bold mb-3"><i class="bi bi-graph-up me-2 wn-green"></i>Environmental Data</h6>
-                    <div class="text-center py-3">
-                        <i class="bi bi-bar-chart-line" style="font-size:2rem; opacity:0.2;"></i>
-                        <p class="text-muted small mt-2 mb-0">
-                            Interactive charts appear here once<br>environmental data is logged.
-                        </p>
+                <div class="wn-card p-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-graph-up me-2 wn-green"></i>Data Summary</h6>
+                    <div class="d-flex justify-content-between py-2 wn-fact-row">
+                        <span class="text-muted">Environmental logs</span>
+                        <span class="fw-bold">{{ log_count }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2">
+                        <span class="text-muted">Last logged</span>
+                        <span>
+                            {% if recent_logs %}{{ recent_logs[0].timestamp.strftime('%b %d, %Y') }}{% else %}—{% endif %}
+                        </span>
                     </div>
                 </div>
             </div>
 
+        </div>
+
+        <!-- ENVIRONMENTAL CHARTS -->
+        <div class="mt-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-activity me-2 wn-green"></i>Environmental History</h5>
+
+            {% if charts %}
+            <div class="row g-3">
+                {% for key in ['temp_humidity', 'weight', 'feeding', 'stress_activity'] %}
+                    {% if charts.get(key) %}
+                    <div class="col-lg-6">
+                        <div class="wn-card p-3">{{ charts[key]|safe }}</div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- HISTORY TABLE -->
+            <div class="wn-card mt-4">
+                <div class="p-3 wn-card-header">
+                    <h6 class="mb-0 fw-bold">Recent Log Entries</h6>
+                </div>
+                <div class="table-responsive">
+                    <table class="table wn-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th><th>Temp</th><th>Humidity</th><th>Weight</th>
+                                <th>Feeding</th><th>Stress</th><th>Activity</th>
+                                <th>Behaviour</th><th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in recent_logs %}
+                            <tr>
+                                <td class="text-muted" style="white-space:nowrap;">{{ log.timestamp.strftime('%b %d, %H:%M') }}</td>
+                                <td>{{ (log.temperature_f ~ '°F') if log.temperature_f is not none else '—' }}</td>
+                                <td>{{ (log.humidity_pct ~ '%') if log.humidity_pct is not none else '—' }}</td>
+                                <td>{{ (log.weight_g|int ~ 'g') if log.weight_g is not none else '—' }}</td>
+                                <td>{{ (log.feeding_amount_g|int ~ 'g') if log.feeding_amount_g is not none else '—' }}</td>
+                                <td>{{ log.stress_level if log.stress_level is not none else '—' }}</td>
+                                <td>{{ log.activity_level if log.activity_level is not none else '—' }}</td>
+                                <td>
+                                    {% if log.media_path and log.media_type == 'image' %}
+                                    <a href="{{ url_for('static', filename='uploads/' + log.media_path) }}" target="_blank">
+                                        <img src="{{ url_for('static', filename='uploads/' + log.media_path) }}" class="wn-thumb">
+                                    </a>
+                                    {% elif log.media_path and log.media_type == 'video' %}
+                                    <a href="{{ url_for('static', filename='uploads/' + log.media_path) }}" target="_blank"
+                                       class="badge wn-badge-blue"><i class="bi bi-play-circle me-1"></i>Video</a>
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-muted" style="max-width:180px;">{{ log.notes or '—' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {% else %}
+            <div class="wn-card wn-coming-soon p-5 text-center">
+                <i class="bi bi-bar-chart-line" style="font-size:2.5rem; opacity:0.2;"></i>
+                <p class="text-muted mt-3 mb-1">No environmental data logged yet.</p>
+                <small class="text-muted">Use the <strong>Log Data</strong> button above to build this animal's living chart history.</small>
+            </div>
+            {% endif %}
         </div>
 
     </div>

@@ -127,6 +127,8 @@ class EnvironmentalLog(db.Model):
     stress_level = db.Column(db.Integer)      # 1-5
     activity_level = db.Column(db.Integer)    # 1-5
     notes = db.Column(db.Text)
+    media_path = db.Column(db.String(200))    # optional photo/video of behaviour
+    media_type = db.Column(db.String(10))     # 'image' or 'video'
 
 
 class DailyMetric(db.Model):

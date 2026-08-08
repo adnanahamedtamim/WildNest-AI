@@ -529,6 +529,9 @@ select.wn-input { cursor: pointer; }
     color: var(--wn-text);
 }
 
+/* RANGE SLIDERS */
+.wn-range { accent-color: var(--wn-green); }
+
 /* PAGE WRAPPER — full width, matches dashboard */
 .wn-page {
     width: 100%;
