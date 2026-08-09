@@ -123,11 +123,16 @@
                         {% if animal.meal_plan_weather_summary %} · {{ animal.meal_plan_weather_summary }}{% endif %}
                     </small>
                 </div>
-                {% if is_owner %}
-                <button type="submit" form="mealPlanForm" class="btn btn-sm wn-btn-outline">
-                    <i class="bi bi-arrow-clockwise me-1"></i>Regenerate
-                </button>
-                {% endif %}
+                <div class="d-flex gap-2">
+                    {% if is_owner %}
+                    <button type="submit" form="mealPlanForm" class="btn btn-sm wn-btn-outline">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Regenerate
+                    </button>
+                    {% endif %}
+                    <button type="button" id="mealPlanToggle" class="btn btn-sm wn-btn-outline" title="Minimize">
+                        <i class="bi bi-chevron-up"></i>
+                    </button>
+                </div>
             </div>
             <div id="mealPlanRaw" class="d-none">{{ animal.meal_plan_content }}</div>
             <div id="mealPlanContent" class="wn-meal-plan-content"></div>
@@ -355,6 +360,28 @@
     const mealPlanRaw = document.getElementById('mealPlanRaw');
     if (mealPlanRaw && window.marked) {
         document.getElementById('mealPlanContent').innerHTML = marked.parse(mealPlanRaw.textContent);
+    }
+
+    // minimize/expand the meal plan card (remembered per pet)
+    const mealPlanToggle = document.getElementById('mealPlanToggle');
+    if (mealPlanToggle) {
+        const mealPlanContent = document.getElementById('mealPlanContent');
+        const storageKey = 'wn_meal_collapsed_{{ animal.id }}';
+        const icon = mealPlanToggle.querySelector('i');
+
+        function applyState(collapsed) {
+            mealPlanContent.classList.toggle('d-none', collapsed);
+            icon.className = collapsed ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
+            mealPlanToggle.title = collapsed ? 'Expand' : 'Minimize';
+        }
+
+        applyState(localStorage.getItem(storageKey) === '1');
+
+        mealPlanToggle.addEventListener('click', function () {
+            const collapsed = !mealPlanContent.classList.contains('d-none');
+            applyState(collapsed);
+            localStorage.setItem(storageKey, collapsed ? '1' : '0');
+        });
     }
 
     // show a loading state on the meal plan button while it generates (weather + AI call)
