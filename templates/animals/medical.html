@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Medical History — {{ animal.name }} — WildNest{% endblock %}
+
+{% block content %}
+<div class="wn-page">
+
+    <!-- HEADER -->
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{{ url_for('animals.profile', animal_id=animal.id) }}" class="btn btn-sm wn-btn-outline">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        {% if animal.photo_path %}
+        <img src="{{ url_for('static', filename='uploads/' + animal.photo_path) }}" class="wn-thumb" alt="{{ animal.name }}">
+        {% else %}
+        <div class="wn-thumb-placeholder">🐾</div>
+        {% endif %}
+        <div>
+            <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-medical me-2 wn-green"></i>Medical History</h5>
+            <small class="text-muted">{{ animal.name }} · <em>{{ animal.species }}</em> · {{ records|length }} record{{ 's' if records|length != 1 }}</small>
+        </div>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- LEFT: TIMELINE -->
+        <div class="col-lg-7">
+            {% if records %}
+            <div class="wn-medical-timeline">
+                {% for r in records %}
+                <div class="wn-card p-4 mb-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="fw-bold mb-1">{{ r.title }}</h6>
+                            <small class="text-muted">
+                                <i class="bi bi-calendar3 me-1"></i>{{ r.record_date.strftime('%B %d, %Y') }}
+                                {% if r.vet_name %} · <i class="bi bi-hospital me-1"></i>{{ r.vet_name }}{% endif %}
+                            </small>
+                        </div>
+                        {% if is_owner %}
+                        <form method="POST" action="{{ url_for('animals.delete_medical', animal_id=animal.id, record_id=r.id) }}"
+                              class="wn-medical-delete-form">
+                            <button type="submit" class="btn btn-sm wn-btn-outline" title="Delete record">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% if r.notes %}
+                    <p class="wn-detail-value mb-2">{{ r.notes }}</p>
+                    {% endif %}
+                    {% if r.treatment %}
+                    <div class="wn-chip d-inline-block">
+                        <i class="bi bi-capsule me-1"></i>Treatment: {{ r.treatment }}
+                    </div>
+                    {% endif %}
+                    <div class="text-muted mt-2" style="font-size:0.72rem;">
+                        Logged by {{ r.logged_by.name }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="wn-card wn-coming-soon p-5 text-center">
+                <i class="bi bi-file-earmark-medical" style="font-size:2.5rem; opacity:0.2;"></i>
+                <p class="text-muted mt-3 mb-1">No medical records yet.</p>
+                <small class="text-muted">
+                    {% if is_owner %}Use the form to log {{ animal.name }}'s first medical record.
+                    {% else %}The current owner hasn't logged any medical records yet.{% endif %}
+                </small>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- RIGHT: ADD RECORD -->
+        {% if is_owner %}
+        <div class="col-lg-5">
+            <div class="wn-card p-4 wn-medical-add-panel">
+                <h6 class="fw-bold mb-3"><i class="bi bi-plus-circle me-2 wn-green"></i>Add Medical Record</h6>
+                <form method="POST" action="{{ url_for('animals.add_medical', animal_id=animal.id) }}">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label text-muted small">Title *</label>
+                            <input type="text" name="title" class="form-control wn-input"
+                                   placeholder="e.g. Annual checkup, Skin infection, Vaccination" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-muted small">Date</label>
+                            <input type="date" name="record_date" class="form-control wn-input"
+                                   value="{{ today }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-muted small">Vet / Clinic Name</label>
+                            <input type="text" name="vet_name" class="form-control wn-input" placeholder="Optional">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-muted small">Treatment Given</label>
+                            <input type="text" name="treatment" class="form-control wn-input" placeholder="Optional">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label text-muted small">Notes</label>
+                            <textarea name="notes" rows="3" class="form-control wn-input"
+                                      placeholder="Symptoms, diagnosis, follow-up plan..."></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn wn-btn-primary w-100 mt-3">
+                        <i class="bi bi-check-lg me-2"></i>Save Record
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.querySelectorAll('.wn-medical-delete-form').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            wnConfirm('Delete this medical record? This cannot be undone.', function () {
+                form.submit();
+            }, { confirmText: 'Delete' });
+        });
+    });
+</script>
+{% endblock %}

@@ -18,6 +18,18 @@ def ensure_schema():
             'media_path': 'VARCHAR(200)',
             'media_type': 'VARCHAR(10)',
         },
+        'users': {
+            'photo_path': 'VARCHAR(200)',
+        },
+        'animals': {
+            'meal_plan_content': 'TEXT',
+            'meal_plan_weather_summary': 'VARCHAR(200)',
+            'meal_plan_generated_at': 'DATETIME',
+            'current_location': 'VARCHAR(200)',
+        },
+        'chat_messages': {
+            'media_path': 'VARCHAR(200)',
+        },
     }
     for table, columns in wanted.items():
         if table not in existing_tables:
@@ -60,7 +72,7 @@ def create_app():
     with app.app_context():
         from models import (User, Animal, EnvironmentalLog, DailyMetric,
                             RehomeListing, AdoptionRequest, HandoverRecord,
-                            WildSightAnalysis)
+                            WildSightAnalysis, ChatMessage, MedicalRecord)
         db.create_all()
         ensure_schema()
 

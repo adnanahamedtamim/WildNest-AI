@@ -55,7 +55,7 @@ h1, h2, h3, h4, h5, h6 {
     background-color: rgba(255, 255, 255, 0.9) !important;
     backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--wn-border);
-    padding: 0.7rem 0;
+    padding: 0.45rem 0;
 }
 
 .wn-logo-text {
@@ -67,6 +67,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .navbar-brand { color: var(--wn-heading) !important; }
+
+.wn-nav-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+}
 
 .wn-role-badge {
     background-color: var(--wn-green-soft);
@@ -290,8 +297,28 @@ select.wn-input { cursor: pointer; }
     border-radius: 20px;
 }
 
+.wn-btn-danger {
+    background-color: #fff;
+    border: 1px solid var(--wn-rose);
+    color: var(--wn-rose);
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    transition: background 0.15s, color 0.15s;
+}
+.wn-btn-danger:hover {
+    background-color: var(--wn-rose);
+    color: #fff;
+}
+
+.wn-danger-zone {
+    border-color: rgba(196, 123, 110, 0.35);
+}
+
 /* TEXT HELPERS */
 .wn-green { color: var(--wn-green-dark) !important; }
+.wn-rose { color: var(--wn-rose) !important; }
 
 .wn-link {
     color: var(--wn-green-dark);
@@ -454,6 +481,56 @@ select.wn-input { cursor: pointer; }
     box-shadow: 0 0 0 2px rgba(107, 144, 128, 0.15);
 }
 
+/* MEAL PLAN CARD */
+.wn-meal-plan-card {
+    border-color: rgba(217, 164, 65, 0.3);
+    background: linear-gradient(180deg, rgba(217, 164, 65, 0.05), transparent 40%);
+}
+
+.wn-meal-plan-content h2 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--wn-heading);
+    margin: 14px 0 4px;
+}
+.wn-meal-plan-content h2:first-child { margin-top: 0; }
+.wn-meal-plan-content p { margin-bottom: 6px; font-size: 0.9rem; }
+.wn-meal-plan-content em { color: var(--wn-muted); font-size: 0.85rem; }
+.wn-meal-plan-content ul { margin: 4px 0 10px; padding-left: 20px; }
+.wn-meal-plan-content li { font-size: 0.9rem; margin-bottom: 4px; }
+
+/* HERO + FLOATING AI BUTTON */
+.wn-hero { position: relative; }
+
+.wn-ai-fab {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: linear-gradient(135deg, var(--wn-green), var(--wn-green-dark));
+    color: #fff;
+    border-radius: 24px;
+    padding: 8px 16px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 4px 14px rgba(107, 144, 128, 0.35);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.wn-ai-fab i { font-size: 0.95rem; }
+.wn-ai-fab:hover {
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(107, 144, 128, 0.45);
+}
+
+@media (max-width: 576px) {
+    .wn-ai-fab { position: static; display: inline-flex; margin-bottom: 12px; }
+}
+
 /* PROFILE PAGE */
 .wn-profile-photo {
     width: 150px;
@@ -529,12 +606,262 @@ select.wn-input { cursor: pointer; }
     color: var(--wn-text);
 }
 
+/* NO-SCROLL FIXED LAYOUT (used by the WildNest AI chat page) */
+html:has(body.wn-noscroll) { height: 100%; overflow: hidden; }
+
+body.wn-noscroll {
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+body.wn-noscroll .wn-navbar { flex-shrink: 0; }
+
+.wn-main-fixed {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.wn-fixed-row {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.wn-fixed-col {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.wn-chat-header { flex-shrink: 0; }
+
+.wn-thumb-sm {
+    width: 32px; height: 32px; border-radius: 8px; object-fit: cover;
+    border: 1px solid var(--wn-border); flex-shrink: 0;
+}
+.wn-thumb-placeholder-sm {
+    width: 32px; height: 32px; border-radius: 8px;
+    background-color: var(--wn-green-soft);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.95rem; flex-shrink: 0;
+}
+
+/* WILDSIGHT CHAT */
+.wn-chat {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.wn-chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.wn-msg { display: flex; align-items: flex-end; gap: 8px; max-width: 85%; }
+.wn-msg-ai { align-self: flex-start; }
+.wn-msg-user { align-self: flex-end; flex-direction: row; }
+
+.wn-msg-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--wn-green-soft); color: var(--wn-green-dark);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; flex-shrink: 0;
+}
+.wn-msg-avatar-user {
+    background: linear-gradient(135deg, var(--wn-green), var(--wn-green-dark));
+    color: #fff; font-weight: 700; font-size: 0.8rem;
+}
+
+.wn-msg-bubble {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    background: var(--wn-card-alt);
+    border: 1px solid var(--wn-border);
+    color: var(--wn-text);
+}
+.wn-msg-user .wn-msg-bubble {
+    background: var(--wn-green);
+    border-color: var(--wn-green);
+    color: #fff;
+}
+.wn-msg-bubble p:last-child { margin-bottom: 0; }
+.wn-msg-bubble p:first-child { margin-top: 0; }
+.wn-msg-bubble ul, .wn-msg-bubble ol { margin: 6px 0; padding-left: 20px; }
+
+/* typing dots */
+.wn-typing { display: inline-flex; gap: 4px; align-items: center; }
+.wn-typing span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--wn-muted); display: inline-block;
+    animation: wn-bounce 1.2s infinite ease-in-out;
+}
+.wn-typing span:nth-child(2) { animation-delay: 0.15s; }
+.wn-typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes wn-bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-5px); opacity: 1; }
+}
+
+.wn-chat-suggest {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 12px 16px 0;
+}
+.wn-suggest-chip {
+    background: var(--wn-card-alt);
+    border: 1px solid var(--wn-border);
+    border-radius: 20px;
+    padding: 6px 13px;
+    font-size: 0.78rem;
+    color: var(--wn-green-dark);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+.wn-suggest-chip:hover { background: var(--wn-green-soft); border-color: var(--wn-green); }
+
+.wn-chat-input {
+    display: flex; gap: 8px;
+    padding: 14px 16px;
+    border-top: 1px solid var(--wn-border);
+    flex-shrink: 0;
+}
+.wn-chat-input .wn-input { flex: 1; }
+
+.wn-msg-bubble-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 100%;
+}
+
+.wn-chat-photo {
+    max-width: 220px;
+    max-height: 220px;
+    border-radius: 12px;
+    border: 1px solid var(--wn-border);
+    object-fit: cover;
+}
+
+.wn-chat-photo-preview {
+    position: relative;
+    display: inline-flex;
+    margin: 10px 16px 0;
+    flex-shrink: 0;
+}
+.wn-chat-photo-preview img {
+    height: 70px;
+    width: 70px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid var(--wn-border);
+}
+.wn-photo-remove {
+    position: absolute;
+    top: -6px; right: -6px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--wn-rose);
+    color: #fff;
+    border: 2px solid #fff;
+    font-size: 0.6rem;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+
 /* RANGE SLIDERS */
 .wn-range { accent-color: var(--wn-green); }
+
+.wn-medical-add-panel {
+    position: sticky;
+    top: 80px;
+}
 
 /* PAGE WRAPPER — full width, matches dashboard */
 .wn-page {
     width: 100%;
+}
+
+/* LIGHTBOX (full-size photo viewer) */
+.wn-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 35, 30, 0.82);
+    z-index: 1090;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    padding: 40px;
+}
+.wn-lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+}
+
+.wn-lightbox-trigger { cursor: zoom-in; }
+
+/* CONFIRM MODAL (in-app replacement for browser confirm()) */
+.wn-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 35, 30, 0.5);
+    z-index: 1095;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.wn-modal-card {
+    background: var(--wn-card);
+    border: 1px solid var(--wn-border);
+    border-radius: 16px;
+    box-shadow: var(--wn-shadow-md);
+    padding: 28px 30px;
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    animation: wn-modal-pop 0.15s ease-out;
+}
+
+@keyframes wn-modal-pop {
+    from { transform: scale(0.96); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.wn-modal-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(196, 123, 110, 0.12);
+    color: var(--wn-rose);
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 14px;
+}
+
+.wn-modal-message {
+    color: var(--wn-text);
+    font-size: 0.92rem;
+    line-height: 1.6;
+    margin-bottom: 0;
+    white-space: pre-line;
 }
 
 /* USER AVATAR */
@@ -553,6 +880,37 @@ select.wn-input { cursor: pointer; }
     flex-shrink: 0;
     box-shadow: var(--wn-shadow);
 }
+
+.wn-avatar-img {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: var(--wn-shadow);
+    border: 1px solid var(--wn-border);
+}
+
+.wn-avatar-wrap {
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.wn-avatar-edit {
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--wn-green);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem;
+    border: 2px solid #fff;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.wn-avatar-edit:hover { background: var(--wn-green-dark); }
 
 /* AUTH PAGES — centered, no page scroll */
 .wn-auth-wrap {

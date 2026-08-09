@@ -1,56 +1,15 @@
 from flask import (Blueprint, render_template, redirect, url_for,
-                   flash, request, current_app, abort)
+                   flash, request, jsonify)
 from flask_login import login_required, current_user
 from extensions import db
-from models import Animal, EnvironmentalLog
+from models import Animal, EnvironmentalLog, MedicalRecord
 from charts import build_env_charts
+from media import save_photo, save_media
+from weather import get_current_weather
+from wildsight_ai import generate_todays_meal_plan
 from datetime import datetime
-import os
-import uuid
 
 animals = Blueprint('animals', __name__)
-
-IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-VIDEO_EXTENSIONS = {'mp4', 'mov', 'webm', 'ogg'}
-ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
-
-
-def _ext(filename):
-    return filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
-
-
-def allowed_file(filename):
-    return _ext(filename) in ALLOWED_EXTENSIONS
-
-
-def save_photo(file_storage):
-    """Save an uploaded image and return the stored filename, or None."""
-    if not file_storage or file_storage.filename == '':
-        return None
-    if _ext(file_storage.filename) not in IMAGE_EXTENSIONS:
-        return None
-    return _store(file_storage)
-
-
-def save_media(file_storage):
-    """Save an image OR video. Returns (filename, media_type) or (None, None)."""
-    if not file_storage or file_storage.filename == '':
-        return None, None
-    ext = _ext(file_storage.filename)
-    if ext in IMAGE_EXTENSIONS:
-        return _store(file_storage), 'image'
-    if ext in VIDEO_EXTENSIONS:
-        return _store(file_storage), 'video'
-    return None, None
-
-
-def _store(file_storage):
-    ext = _ext(file_storage.filename)
-    fname = f"{uuid.uuid4().hex}.{ext}"
-    upload_dir = os.path.join(current_app.root_path, 'static', 'uploads')
-    os.makedirs(upload_dir, exist_ok=True)
-    file_storage.save(os.path.join(upload_dir, fname))
-    return fname
 
 
 def can_view_animal(animal):
@@ -150,6 +109,93 @@ def profile(animal_id):
                            recent_logs=recent_logs)
 
 
+@animals.route('/<int:animal_id>/delete', methods=['POST'])
+@login_required
+def delete(animal_id):
+    animal = Animal.query.get_or_404(animal_id)
+    if animal.owner_id != current_user.id:
+        flash('Only the current owner can delete this pet.', 'danger')
+        return redirect(url_for('animals.profile', animal_id=animal.id))
+
+    name = animal.name
+    db.session.delete(animal)
+    db.session.commit()
+    flash(f'{name} has been removed from WildNest.', 'success')
+    return redirect(url_for('main.dashboard'))
+
+
+@animals.route('/<int:animal_id>/photo', methods=['POST'])
+@login_required
+def update_photo(animal_id):
+    animal = Animal.query.get_or_404(animal_id)
+    if animal.owner_id != current_user.id:
+        return jsonify({'error': 'Only the current owner can change this photo.'}), 403
+
+    fname = save_photo(request.files.get('photo'))
+    if not fname:
+        flash('Please choose a valid image file (PNG, JPG, GIF, WEBP).', 'danger')
+        return redirect(url_for('animals.profile', animal_id=animal.id))
+
+    animal.photo_path = fname
+    db.session.commit()
+    flash(f"{animal.name}'s photo has been updated.", 'success')
+    return redirect(url_for('animals.profile', animal_id=animal.id))
+
+
+@animals.route('/<int:animal_id>/meal/generate', methods=['POST'])
+@login_required
+def generate_meal(animal_id):
+    animal = Animal.query.get_or_404(animal_id)
+    if animal.owner_id != current_user.id:
+        flash("Only the current owner can generate this pet's meal plan.", 'danger')
+        return redirect(url_for('animals.profile', animal_id=animal.id))
+
+    weather = get_current_weather(animal.current_location)
+    plan = generate_todays_meal_plan(animal, weather)
+
+    animal.meal_plan_content = plan
+    animal.meal_plan_generated_at = datetime.utcnow()
+    animal.meal_plan_weather_summary = (
+        f"{weather['temp_f']}°F, {weather['humidity_pct']}% humidity — {weather['description']}"
+        if weather else None
+    )
+    db.session.commit()
+
+    if not weather:
+        flash("Generated today's plan from history alone — add a Current Location under "
+              "Origin & Background for weather-aware suggestions.", 'warning')
+    else:
+        flash(f"Today's meal plan for {animal.name} is ready.", 'success')
+
+    return redirect(url_for('animals.profile', animal_id=animal.id))
+
+
+@animals.route('/<int:animal_id>/background', methods=['POST'])
+@login_required
+def update_background(animal_id):
+    animal = Animal.query.get_or_404(animal_id)
+    if animal.owner_id != current_user.id:
+        flash('Only the current owner can edit this.', 'danger')
+        return redirect(url_for('animals.profile', animal_id=animal.id))
+
+    rescue_date = None
+    rd = request.form.get('rescue_date', '').strip()
+    if rd:
+        try:
+            rescue_date = datetime.strptime(rd, '%Y-%m-%d').date()
+        except ValueError:
+            rescue_date = animal.rescue_date
+
+    animal.rescue_date = rescue_date
+    animal.rescue_location = request.form.get('rescue_location', '').strip() or None
+    animal.rescue_reason = request.form.get('rescue_reason', '').strip() or None
+    animal.current_location = request.form.get('current_location', '').strip() or None
+    db.session.commit()
+
+    flash(f"{animal.name}'s background has been updated.", 'success')
+    return redirect(url_for('animals.profile', animal_id=animal.id))
+
+
 @animals.route('/<int:animal_id>/log', methods=['GET', 'POST'])
 @login_required
 def log_env(animal_id):
@@ -183,3 +229,71 @@ def log_env(animal_id):
         return redirect(url_for('animals.profile', animal_id=animal.id))
 
     return render_template('animals/log_env.html', animal=animal)
+
+
+@animals.route('/<int:animal_id>/medical')
+@login_required
+def medical(animal_id):
+    animal = Animal.query.get_or_404(animal_id)
+    if not can_view_animal(animal):
+        flash('You do not have access to this pet.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    is_owner = animal.owner_id == current_user.id
+    records = MedicalRecord.query.filter_by(animal_id=animal.id) \
+        .order_by(MedicalRecord.record_date.desc(), MedicalRecord.created_at.desc()).all()
+
+    return render_template('animals/medical.html', animal=animal, records=records,
+                           is_owner=is_owner, today=datetime.utcnow().date().isoformat())
+
+
+@animals.route('/<int:animal_id>/medical/add', methods=['POST'])
+@login_required
+def add_medical(animal_id):
+    animal = Animal.query.get_or_404(animal_id)
+    if animal.owner_id != current_user.id:
+        flash('Only the current owner can add medical records.', 'danger')
+        return redirect(url_for('animals.medical', animal_id=animal.id))
+
+    title = request.form.get('title', '').strip()
+    if not title:
+        flash('Please give the medical record a title.', 'danger')
+        return redirect(url_for('animals.medical', animal_id=animal.id))
+
+    record_date = datetime.utcnow().date()
+    rd = request.form.get('record_date', '').strip()
+    if rd:
+        try:
+            record_date = datetime.strptime(rd, '%Y-%m-%d').date()
+        except ValueError:
+            pass
+
+    record = MedicalRecord(
+        animal_id=animal.id,
+        logged_by_id=current_user.id,
+        record_date=record_date,
+        title=title,
+        notes=request.form.get('notes', '').strip() or None,
+        treatment=request.form.get('treatment', '').strip() or None,
+        vet_name=request.form.get('vet_name', '').strip() or None,
+    )
+    db.session.add(record)
+    db.session.commit()
+
+    flash(f"Medical record added for {animal.name}.", 'success')
+    return redirect(url_for('animals.medical', animal_id=animal.id))
+
+
+@animals.route('/<int:animal_id>/medical/<int:record_id>/delete', methods=['POST'])
+@login_required
+def delete_medical(animal_id, record_id):
+    animal = Animal.query.get_or_404(animal_id)
+    record = MedicalRecord.query.get_or_404(record_id)
+    if animal.owner_id != current_user.id or record.animal_id != animal.id:
+        flash('You cannot delete this record.', 'danger')
+        return redirect(url_for('animals.medical', animal_id=animal.id))
+
+    db.session.delete(record)
+    db.session.commit()
+    flash('Medical record deleted.', 'success')
+    return redirect(url_for('animals.medical', animal_id=animal.id))

@@ -18,6 +18,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # 'staff' or 'adopter'
     organization = db.Column(db.String(100))
+    photo_path = db.Column(db.String(200))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # animals this user currently owns
@@ -61,12 +62,18 @@ class Animal(db.Model):
     rescue_date = db.Column(db.Date)
     rescue_location = db.Column(db.String(200))
     rescue_reason = db.Column(db.Text)
+    current_location = db.Column(db.String(200))  # where the pet lives now (used for weather)
 
     # care profile
     medical_history = db.Column(db.Text)
     stress_triggers = db.Column(db.Text)
     dietary_requirements = db.Column(db.Text)
     photo_path = db.Column(db.String(200))
+
+    # today's AI-generated meal plan (regenerated on demand, not historized)
+    meal_plan_content = db.Column(db.Text)
+    meal_plan_weather_summary = db.Column(db.String(200))
+    meal_plan_generated_at = db.Column(db.DateTime)
 
     # lifecycle
     status = db.Column(db.String(20), default='in_care')
@@ -94,6 +101,10 @@ class Animal(db.Model):
     ai_analyses = db.relationship(
         'WildSightAnalysis', backref='animal', lazy=True,
         cascade='all, delete-orphan', order_by='WildSightAnalysis.created_at.desc()'
+    )
+    medical_records = db.relationship(
+        'MedicalRecord', backref='animal', lazy=True,
+        cascade='all, delete-orphan', order_by='MedicalRecord.record_date.desc()'
     )
 
     @property
@@ -202,3 +213,33 @@ class WildSightAnalysis(db.Model):
     ai_response = db.Column(db.Text)
     severity = db.Column(db.String(20))  # normal / watch / contact_staff / emergency
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class MedicalRecord(db.Model):
+    __tablename__ = 'medical_records'
+    id = db.Column(db.Integer, primary_key=True)
+    animal_id = db.Column(db.Integer, db.ForeignKey('animals.id'), nullable=False)
+    logged_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    record_date = db.Column(db.Date, default=lambda: datetime.utcnow().date())
+    title = db.Column(db.String(150), nullable=False)  # e.g. "Annual checkup", "Skin infection"
+    notes = db.Column(db.Text)
+    treatment = db.Column(db.Text)
+    vet_name = db.Column(db.String(120))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    logged_by = db.relationship('User', foreign_keys=[logged_by_id])
+
+
+class ChatMessage(db.Model):
+    __tablename__ = 'chat_messages'
+    id = db.Column(db.Integer, primary_key=True)
+    animal_id = db.Column(db.Integer, db.ForeignKey('animals.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    role = db.Column(db.String(12), nullable=False)  # 'user' or 'assistant'
+    content = db.Column(db.Text, nullable=False)
+    media_path = db.Column(db.String(200))  # optional photo attached to a user message
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    animal = db.relationship('Animal', backref=db.backref(
+        'chat_messages', lazy=True, cascade='all, delete-orphan',
+        order_by='ChatMessage.created_at'))

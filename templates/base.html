@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 
 <nav class="navbar navbar-expand-lg navbar-light wn-navbar sticky-top">
     <div class="container-fluid px-4">
@@ -29,7 +29,7 @@
                 <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}"
                        href="{{ url_for('main.dashboard') }}">
-                        <i class="bi bi-house-heart me-1"></i>My Animals
+                        <i class="bi bi-house-heart me-1"></i>My Pets
                     </a>
                 </li>
             </ul>
@@ -38,7 +38,12 @@
                 <li class="nav-item">
                     <a class="nav-link d-flex align-items-center gap-2 {% if request.endpoint == 'main.account' %}active{% endif %}"
                        href="{{ url_for('main.account') }}">
+                        {% if current_user.photo_path %}
+                        <img src="{{ url_for('static', filename='uploads/' + current_user.photo_path) }}"
+                             class="wn-nav-avatar" alt="{{ current_user.name }}">
+                        {% else %}
                         <i class="bi bi-person-circle"></i>
+                        {% endif %}
                         <span class="small">{{ current_user.name }}</span>
                     </a>
                 </li>
@@ -66,22 +71,91 @@
 {% endif %}
 {% endwith %}
 
-<main class="container-fluid px-4 py-4">
+<main class="{% block main_class %}container-fluid px-4 py-4{% endblock %}">
     {% block content %}{% endblock %}
 </main>
 
+{% block show_footer %}
 <footer class="wn-footer text-center py-3 mt-auto">
     <small class="text-muted">🐾 WildNest &copy; 2026 — AnimalHack 2026</small>
 </footer>
+{% endblock %}
+
+<!-- LIGHTBOX (used by any photo with class="wn-lightbox-trigger" data-full="...") -->
+<div id="wnLightbox" class="wn-lightbox d-none">
+    <img id="wnLightboxImg" src="" alt="">
+</div>
+
+<!-- CONFIRM MODAL (in-app replacement for browser confirm() — call wnConfirm(msg, onOk, opts)) -->
+<div id="wnConfirmOverlay" class="wn-modal-overlay d-none">
+    <div class="wn-modal-card">
+        <div class="wn-modal-icon"><i class="bi bi-exclamation-triangle"></i></div>
+        <p id="wnConfirmMessage" class="wn-modal-message"></p>
+        <div class="d-flex gap-2 justify-content-center mt-3">
+            <button type="button" id="wnConfirmCancel" class="btn wn-btn-outline px-4">Cancel</button>
+            <button type="button" id="wnConfirmOk" class="btn wn-btn-danger px-4">Confirm</button>
+        </div>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    // photo viewer — click any .wn-lightbox-trigger to view full size, click again to close
+    (function () {
+        const box = document.getElementById('wnLightbox');
+        const boxImg = document.getElementById('wnLightboxImg');
+        document.addEventListener('click', function (e) {
+            const trigger = e.target.closest('.wn-lightbox-trigger');
+            if (trigger) {
+                boxImg.src = trigger.getAttribute('data-full');
+                box.classList.remove('d-none');
+            }
+        });
+        box.addEventListener('click', function () { box.classList.add('d-none'); });
+    })();
+
+    // in-app confirm modal — replaces the native browser confirm() popup
+    window.wnConfirm = function (message, onConfirm, options) {
+        options = options || {};
+        const overlay = document.getElementById('wnConfirmOverlay');
+        const msgEl = document.getElementById('wnConfirmMessage');
+        const okBtn = document.getElementById('wnConfirmOk');
+        const cancelBtn = document.getElementById('wnConfirmCancel');
+
+        msgEl.textContent = message;
+        okBtn.textContent = options.confirmText || 'Confirm';
+        overlay.classList.remove('d-none');
+
+        function cleanup() {
+            overlay.classList.add('d-none');
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+        }
+        function onOk() { cleanup(); onConfirm(); }
+        function onCancel() { cleanup(); }
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+    };
+
     // auto-dismiss flash toasts after 4 seconds
     document.querySelectorAll('.wn-toast-stack .alert').forEach(function (el) {
         setTimeout(function () {
             const inst = bootstrap.Alert.getOrCreateInstance(el);
             inst.close();
         }, 4000);
+    });
+
+    // "Back" buttons return to wherever the user actually came from (dashboard or
+    // profile) instead of always jumping to a hardcoded page. Falls back to the
+    // link's own href if there's no same-site page to go back to.
+    document.querySelectorAll('.wn-back-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            if (document.referrer && document.referrer.startsWith(window.location.origin) && window.history.length > 1) {
+                e.preventDefault();
+                window.history.back();
+            }
+        });
     });
 </script>
 {% block extra_scripts %}{% endblock %}

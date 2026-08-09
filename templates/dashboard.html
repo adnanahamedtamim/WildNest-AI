@@ -1,17 +1,17 @@
 {% extends "base.html" %}
-{% block title %}My Animals — WildNest{% endblock %}
+{% block title %}My Pets — WildNest{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h4 class="fw-bold mb-0">My Animals</h4>
+        <h4 class="fw-bold mb-0">My Pets</h4>
         <small class="text-muted">Welcome back, {{ current_user.name }}
             {% if current_user.organization %} · {{ current_user.organization }}{% endif %}
         </small>
     </div>
     {% if cards %}
     <a href="{{ url_for('animals.new') }}" class="btn wn-btn-primary">
-        <i class="bi bi-plus-lg me-2"></i>Add Animal
+        <i class="bi bi-plus-lg me-2"></i>Add Pet
     </a>
     {% endif %}
 </div>
@@ -76,30 +76,41 @@
                 </div>
                 {% endif %}
 
-                <!-- Latest metrics -->
-                {% if item.latest_metric %}
+                <!-- Latest environmental log -->
+                {% if item.latest_env_log %}
                 <div class="row g-2 mb-3">
                     <div class="col-6">
                         <div class="wn-mini-stat">
-                            <div class="wn-mini-label">Feeding</div>
+                            <div class="wn-mini-label">Stress</div>
+                            {% if item.latest_env_log.stress_level %}
                             <div class="wn-mini-stars">
-                                {% for i in range(5) %}{% if i < item.latest_metric.feeding_habit %}★{% else %}☆{% endif %}{% endfor %}
+                                {% for i in range(5) %}{% if i < item.latest_env_log.stress_level %}★{% else %}☆{% endif %}{% endfor %}
                             </div>
+                            {% else %}
+                            <small class="text-muted">—</small>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="wn-mini-stat">
                             <div class="wn-mini-label">Activity</div>
+                            {% if item.latest_env_log.activity_level %}
                             <div class="wn-mini-stars">
-                                {% for i in range(5) %}{% if i < item.latest_metric.activity_level %}★{% else %}☆{% endif %}{% endfor %}
+                                {% for i in range(5) %}{% if i < item.latest_env_log.activity_level %}★{% else %}☆{% endif %}{% endfor %}
                             </div>
+                            {% else %}
+                            <small class="text-muted">—</small>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
+                <small class="text-muted d-block mb-3" style="font-size:0.72rem;">
+                    <i class="bi bi-clock-history me-1"></i>Logged {{ item.latest_env_log.timestamp.strftime('%b %d') }}
+                </small>
                 {% else %}
                 <div class="wn-empty-metrics mb-3">
                     <i class="bi bi-clipboard-data me-2 text-muted"></i>
-                    <small class="text-muted">No metrics logged yet.</small>
+                    <small class="text-muted">No data logged yet.</small>
                 </div>
                 {% endif %}
 
@@ -114,7 +125,8 @@
                        class="btn btn-sm wn-btn-outline flex-fill">
                         <i class="bi bi-pencil me-1"></i>Log
                     </a>
-                    <a href="#" class="btn btn-sm wn-btn-outline">
+                    <a href="{{ url_for('wildsight.chat', animal_id=item.animal.id) }}"
+                       class="btn btn-sm wn-btn-outline" title="WildNest AI">
                         <i class="bi bi-robot"></i>
                     </a>
                     {% endif %}
@@ -129,13 +141,13 @@
 {% else %}
 <div class="text-center py-5 mt-4">
     <div style="font-size:4rem;opacity:0.2;">🌿</div>
-    <h5 class="text-muted mt-3">No animals yet</h5>
+    <h5 class="text-muted mt-3">No pets yet</h5>
     <p class="text-muted small">
-        Add an animal you've rescued or already own to start building its living profile —<br>
+        Add a pet you've rescued or already own to start building its living profile —<br>
         or browse the rehoming feed to adopt one.
     </p>
     <a href="{{ url_for('animals.new') }}" class="btn wn-btn-primary mt-2">
-        <i class="bi bi-plus-lg me-2"></i>Add Your First Animal
+        <i class="bi bi-plus-lg me-2"></i>Add Your First Pet
     </a>
 </div>
 {% endif %}

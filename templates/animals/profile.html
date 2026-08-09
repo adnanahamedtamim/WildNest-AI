@@ -5,6 +5,9 @@
 {% if charts %}
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 {% endif %}
+{% if animal.meal_plan_content %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -17,14 +20,34 @@
         </a>
 
         <!-- HERO -->
-        <div class="wn-card mb-4">
+        <div class="wn-card mb-4 wn-hero">
+            {% if is_owner %}
+            <a href="{{ url_for('wildsight.chat', animal_id=animal.id) }}" class="wn-ai-fab" title="Chat with WildNest AI">
+                <i class="bi bi-robot"></i>
+                <span>WildNest AI</span>
+            </a>
+            {% endif %}
             <div class="p-4 d-flex flex-column flex-md-row gap-4 align-items-center align-items-md-start">
-                {% if animal.photo_path %}
-                <img src="{{ url_for('static', filename='uploads/' + animal.photo_path) }}"
-                     class="wn-profile-photo" alt="{{ animal.name }}">
-                {% else %}
-                <div class="wn-profile-photo-placeholder">🐾</div>
-                {% endif %}
+                <div class="wn-avatar-wrap">
+                    {% if animal.photo_path %}
+                    <img src="{{ url_for('static', filename='uploads/' + animal.photo_path) }}"
+                         class="wn-profile-photo wn-lightbox-trigger"
+                         data-full="{{ url_for('static', filename='uploads/' + animal.photo_path) }}"
+                         alt="{{ animal.name }}" title="Click to view">
+                    {% else %}
+                    <div class="wn-profile-photo-placeholder">🐾</div>
+                    {% endif %}
+                    {% if is_owner %}
+                    <form id="animalPhotoForm" method="POST"
+                          action="{{ url_for('animals.update_photo', animal_id=animal.id) }}"
+                          enctype="multipart/form-data">
+                        <label for="animalPhotoInput" class="wn-avatar-edit" title="Change photo">
+                            <i class="bi bi-camera-fill"></i>
+                        </label>
+                        <input type="file" name="photo" id="animalPhotoInput" accept="image/*" class="d-none">
+                    </form>
+                    {% endif %}
+                </div>
 
                 <div class="flex-fill text-center text-md-start">
                     <div class="d-flex align-items-center gap-2 justify-content-center justify-content-md-start mb-1">
@@ -63,16 +86,25 @@
                         <a href="{{ url_for('animals.log_env', animal_id=animal.id) }}" class="btn btn-sm wn-btn-primary">
                             <i class="bi bi-clipboard-plus me-1"></i>Log Data
                         </a>
+                        <a href="{{ url_for('animals.medical', animal_id=animal.id) }}" class="btn btn-sm wn-btn-outline">
+                            <i class="bi bi-file-earmark-medical me-1"></i>Medical History
+                        </a>
                         <a href="#" class="btn btn-sm wn-btn-outline">
                             <i class="bi bi-megaphone me-1"></i>List for Rehoming
                         </a>
                         <a href="#" class="btn btn-sm wn-btn-outline">
                             <i class="bi bi-qr-code me-1"></i>QR Passport
                         </a>
+                        <form method="POST" action="{{ url_for('animals.generate_meal', animal_id=animal.id) }}"
+                              id="mealPlanForm" class="d-inline">
+                            <button type="submit" class="btn btn-sm wn-btn-outline" id="mealPlanBtn">
+                                <i class="bi bi-sun me-1"></i>Generate Today's Meal
+                            </button>
+                        </form>
                         {% endif %}
                         {% if is_creator and not is_owner %}
                         <span class="badge wn-badge-neutral align-self-center">
-                            <i class="bi bi-eye me-1"></i>Read-only (you rescued this animal)
+                            <i class="bi bi-eye me-1"></i>Read-only (you rescued this pet)
                         </span>
                         {% endif %}
                     </div>
@@ -80,44 +112,107 @@
             </div>
         </div>
 
+        <!-- TODAY'S MEAL PLAN -->
+        {% if animal.meal_plan_content %}
+        <div class="wn-card p-4 mb-4 wn-meal-plan-card">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                <div>
+                    <h6 class="fw-bold mb-1"><i class="bi bi-sun me-2 wn-green"></i>Today's Meal Plan</h6>
+                    <small class="text-muted">
+                        Generated {{ animal.meal_plan_generated_at.strftime('%b %d, %I:%M %p') }}
+                        {% if animal.meal_plan_weather_summary %} · {{ animal.meal_plan_weather_summary }}{% endif %}
+                    </small>
+                </div>
+                {% if is_owner %}
+                <button type="submit" form="mealPlanForm" class="btn btn-sm wn-btn-outline">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Regenerate
+                </button>
+                {% endif %}
+            </div>
+            <div id="mealPlanRaw" class="d-none">{{ animal.meal_plan_content }}</div>
+            <div id="mealPlanContent" class="wn-meal-plan-content"></div>
+        </div>
+        {% endif %}
+
         <!-- DETAILS GRID -->
         <div class="row g-4">
 
             <!-- LEFT: care info -->
             <div class="col-lg-7">
-                <div class="wn-card p-4 mb-4">
-                    <h6 class="fw-bold mb-3"><i class="bi bi-clipboard2-pulse me-2 wn-green"></i>Care Profile</h6>
-
-                    <div class="wn-detail-block">
-                        <div class="wn-detail-label">Medical History</div>
-                        <div class="wn-detail-value">{{ animal.medical_history or 'No records yet.' }}</div>
-                    </div>
-                    <div class="wn-detail-block">
-                        <div class="wn-detail-label">⚠️ Stress Triggers</div>
-                        <div class="wn-detail-value">{{ animal.stress_triggers or 'None recorded.' }}</div>
-                    </div>
-                    <div class="wn-detail-block">
-                        <div class="wn-detail-label">Dietary Requirements</div>
-                        <div class="wn-detail-value">{{ animal.dietary_requirements or 'Not specified.' }}</div>
-                    </div>
-                </div>
-
                 <div class="wn-card p-4">
-                    <h6 class="fw-bold mb-3"><i class="bi bi-geo-alt me-2 wn-green"></i>Origin & Background</h6>
-                    <div class="wn-detail-block">
-                        <div class="wn-detail-label">Date</div>
-                        <div class="wn-detail-value">
-                            {{ animal.rescue_date.strftime('%B %d, %Y') if animal.rescue_date else 'Not recorded.' }}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-geo-alt me-2 wn-green"></i>Origin & Background</h6>
+                        {% if is_owner %}
+                        <button type="button" id="editBackgroundBtn" class="btn btn-sm wn-btn-outline">
+                            <i class="bi bi-pencil me-1"></i>Edit
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    <!-- VIEW MODE -->
+                    <div id="backgroundView">
+                        <div class="wn-detail-block">
+                            <div class="wn-detail-label">Date</div>
+                            <div class="wn-detail-value">
+                                {{ animal.rescue_date.strftime('%B %d, %Y') if animal.rescue_date else 'Not recorded.' }}
+                            </div>
+                        </div>
+                        <div class="wn-detail-block">
+                            <div class="wn-detail-label">Rescue Location</div>
+                            <div class="wn-detail-value">{{ animal.rescue_location or 'Not recorded.' }}</div>
+                        </div>
+                        <div class="wn-detail-block">
+                            <div class="wn-detail-label"><i class="bi bi-geo-alt-fill me-1"></i>Current Location</div>
+                            <div class="wn-detail-value">{{ animal.current_location or 'Not set — needed for weather-aware meal plans.' }}</div>
+                        </div>
+                        <div class="wn-detail-block">
+                            <div class="wn-detail-label">Background</div>
+                            <div class="wn-detail-value">{{ animal.rescue_reason or 'No background provided.' }}</div>
                         </div>
                     </div>
-                    <div class="wn-detail-block">
-                        <div class="wn-detail-label">Location</div>
-                        <div class="wn-detail-value">{{ animal.rescue_location or 'Not recorded.' }}</div>
-                    </div>
-                    <div class="wn-detail-block">
-                        <div class="wn-detail-label">Background</div>
-                        <div class="wn-detail-value">{{ animal.rescue_reason or 'No background provided.' }}</div>
-                    </div>
+
+                    <!-- EDIT MODE -->
+                    {% if is_owner %}
+                    <form id="backgroundForm" method="POST"
+                          action="{{ url_for('animals.update_background', animal_id=animal.id) }}"
+                          class="d-none">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label text-muted small">Date</label>
+                                <input type="date" name="rescue_date" class="form-control wn-input"
+                                       value="{{ animal.rescue_date.isoformat() if animal.rescue_date else '' }}">
+                            </div>
+                            <div class="col-md-7">
+                                <label class="form-label text-muted small">Rescue Location</label>
+                                <input type="text" name="rescue_location" class="form-control wn-input"
+                                       placeholder="e.g. Green Valley Wildlife Center"
+                                       value="{{ animal.rescue_location or '' }}">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label text-muted small">
+                                    <i class="bi bi-geo-alt-fill me-1"></i>Current Location
+                                </label>
+                                <input type="text" name="current_location" class="form-control wn-input"
+                                       placeholder="e.g. Austin, Texas — where this pet lives now"
+                                       value="{{ animal.current_location or '' }}">
+                                <small class="text-muted" style="font-size:0.72rem;">
+                                    Used to check today's temperature & humidity for meal plan suggestions.
+                                </small>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label text-muted small">Background</label>
+                                <textarea name="rescue_reason" rows="3" class="form-control wn-input"
+                                          placeholder="How this pet came into care...">{{ animal.rescue_reason or '' }}</textarea>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 mt-3">
+                            <button type="submit" class="btn btn-sm wn-btn-primary">
+                                <i class="bi bi-check-lg me-1"></i>Save
+                            </button>
+                            <button type="button" id="cancelBackgroundBtn" class="btn btn-sm wn-btn-outline">Cancel</button>
+                        </div>
+                    </form>
+                    {% endif %}
                 </div>
             </div>
 
@@ -223,11 +318,84 @@
             <div class="wn-card wn-coming-soon p-5 text-center">
                 <i class="bi bi-bar-chart-line" style="font-size:2.5rem; opacity:0.2;"></i>
                 <p class="text-muted mt-3 mb-1">No environmental data logged yet.</p>
-                <small class="text-muted">Use the <strong>Log Data</strong> button above to build this animal's living chart history.</small>
+                <small class="text-muted">Use the <strong>Log Data</strong> button above to build this pet's living chart history.</small>
             </div>
             {% endif %}
         </div>
 
+        <!-- DANGER ZONE -->
+        {% if is_owner %}
+        <div class="wn-card wn-danger-zone mt-4 p-4">
+            <h6 class="fw-bold mb-1 wn-rose"><i class="bi bi-exclamation-triangle me-2"></i>Danger Zone</h6>
+            <p class="text-muted small mb-3">
+                Permanently delete {{ animal.name }}'s profile, including all logged data, photos, and chat history. This cannot be undone.
+            </p>
+            <form method="POST" action="{{ url_for('animals.delete', animal_id=animal.id) }}" id="deleteForm">
+                <button type="submit" class="btn wn-btn-danger">
+                    <i class="bi bi-trash3 me-2"></i>Delete {{ animal.name }}'s Profile
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const animalPhotoInput = document.getElementById('animalPhotoInput');
+    if (animalPhotoInput) {
+        animalPhotoInput.addEventListener('change', function () {
+            if (this.files[0]) document.getElementById('animalPhotoForm').submit();
+        });
+    }
+
+    // render the AI meal plan (stored as markdown) as formatted HTML
+    const mealPlanRaw = document.getElementById('mealPlanRaw');
+    if (mealPlanRaw && window.marked) {
+        document.getElementById('mealPlanContent').innerHTML = marked.parse(mealPlanRaw.textContent);
+    }
+
+    // show a loading state on the meal plan button while it generates (weather + AI call)
+    const mealPlanForm = document.getElementById('mealPlanForm');
+    if (mealPlanForm) {
+        mealPlanForm.addEventListener('submit', function () {
+            document.querySelectorAll('#mealPlanBtn, button[form="mealPlanForm"]').forEach(function (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
+            });
+        });
+    }
+
+    const editBackgroundBtn = document.getElementById('editBackgroundBtn');
+    const cancelBackgroundBtn = document.getElementById('cancelBackgroundBtn');
+    const backgroundView = document.getElementById('backgroundView');
+    const backgroundForm = document.getElementById('backgroundForm');
+    if (editBackgroundBtn) {
+        editBackgroundBtn.addEventListener('click', function () {
+            backgroundView.classList.add('d-none');
+            backgroundForm.classList.remove('d-none');
+            editBackgroundBtn.classList.add('d-none');
+        });
+        cancelBackgroundBtn.addEventListener('click', function () {
+            backgroundForm.classList.add('d-none');
+            backgroundView.classList.remove('d-none');
+            editBackgroundBtn.classList.remove('d-none');
+        });
+    }
+
+    const deleteForm = document.getElementById('deleteForm');
+    if (deleteForm) {
+        deleteForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            wnConfirm(
+                "Are you sure you want to permanently delete {{ animal.name }}'s profile?\n\n" +
+                "This will remove all logged data, photos, and chat history. This cannot be undone.",
+                function () { deleteForm.submit(); },
+                { confirmText: 'Delete' }
+            );
+        });
+    }
+</script>
 {% endblock %}

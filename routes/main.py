@@ -1,6 +1,8 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
+from extensions import db
 from models import Animal, DailyMetric
+from media import save_photo
 from datetime import datetime
 
 main = Blueprint('main', __name__)
@@ -45,14 +47,14 @@ def dashboard():
         if animal.handover_date:
             days_since = (datetime.utcnow() - animal.handover_date).days
 
-        latest_metric = DailyMetric.query.filter_by(
-            animal_id=animal.id
-        ).order_by(DailyMetric.date.desc()).first()
+        # env_logs is ordered oldest -> newest, so the last item is the most recent
+        logs = animal.env_logs
+        latest_env_log = logs[-1] if logs else None
 
         cards.append({
             'animal': animal,
             'days_since_handover': days_since,
-            'latest_metric': latest_metric,
+            'latest_env_log': latest_env_log,
             'in_monitoring': days_since is not None and days_since <= 30,
             'is_owner': animal.owner_id == current_user.id,
             'is_creator_only': (animal.created_by_id == current_user.id
@@ -67,3 +69,17 @@ def dashboard():
 def account():
     stats = _user_stats(current_user)
     return render_template('account.html', stats=stats, user=current_user)
+
+
+@main.route('/profile/photo', methods=['POST'])
+@login_required
+def update_photo():
+    fname = save_photo(request.files.get('photo'))
+    if not fname:
+        flash('Please choose a valid image file (PNG, JPG, GIF, WEBP).', 'danger')
+        return redirect(url_for('main.account'))
+
+    current_user.photo_path = fname
+    db.session.commit()
+    flash('Your profile photo has been updated.', 'success')
+    return redirect(url_for('main.account'))

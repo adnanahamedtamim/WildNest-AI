@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}WildNest AI — {{ animal.name }}{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+{% endblock %}
+
+{% block body_class %}wn-noscroll{% endblock %}
+{% block main_class %}container-fluid px-4 py-2 wn-main-fixed{% endblock %}
+{% block show_footer %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center wn-fixed-row">
+    <div class="col-xl-10 wn-fixed-col">
+
+        <!-- HEADER (compact) -->
+        <div class="d-flex align-items-center gap-2 mb-2 wn-chat-header">
+            <a href="{{ url_for('animals.profile', animal_id=animal.id) }}" class="btn btn-sm wn-btn-outline wn-back-btn">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            {% if animal.photo_path %}
+            <img src="{{ url_for('static', filename='uploads/' + animal.photo_path) }}" class="wn-thumb-sm" alt="{{ animal.name }}">
+            {% else %}
+            <div class="wn-thumb-placeholder-sm">🐾</div>
+            {% endif %}
+            <div class="flex-fill">
+                <h6 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-robot wn-green"></i> WildNest AI
+                    <small class="text-muted fw-normal">— {{ animal.name }} · <em>{{ animal.species }}</em></small>
+                </h6>
+            </div>
+            <button id="clearBtn" class="btn btn-sm wn-btn-outline" title="Clear conversation">
+                <i class="bi bi-trash3"></i>
+            </button>
+        </div>
+
+        {% if not ai_ready %}
+        <div class="alert wn-alert alert-warning mb-2 py-2">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            WildNest AI isn't connected yet. Add your free Gemini API key to <code>.env</code> and restart to enable chat.
+        </div>
+        {% endif %}
+
+        <!-- CHAT WINDOW -->
+        <div class="wn-card wn-chat">
+            <div class="wn-chat-messages" id="messages">
+
+                <!-- greeting -->
+                <div class="wn-msg wn-msg-ai">
+                    <div class="wn-msg-avatar"><i class="bi bi-robot"></i></div>
+                    <div class="wn-msg-bubble">
+                        Hi! I'm WildNest, and I know all about <strong>{{ animal.name }}</strong> —
+                        {{ animal.species }}, its history, stress triggers, diet, and all its logged data.
+                        Ask me anything about caring for {{ animal.name }}. 🌿
+                    </div>
+                </div>
+
+                {% for m in messages %}
+                <div class="wn-msg {{ 'wn-msg-user' if m.role == 'user' else 'wn-msg-ai' }}">
+                    {% if m.role == 'assistant' %}<div class="wn-msg-avatar"><i class="bi bi-robot"></i></div>{% endif %}
+                    <div class="wn-msg-bubble-wrap">
+                        {% if m.media_path %}
+                        <img src="{{ url_for('static', filename='uploads/' + m.media_path) }}"
+                             class="wn-chat-photo" alt="Uploaded photo">
+                        {% endif %}
+                        <div class="wn-msg-bubble" {% if m.role == 'assistant' %}data-md="1"{% endif %}>{{ m.content }}</div>
+                    </div>
+                    {% if m.role == 'user' %}<div class="wn-msg-avatar wn-msg-avatar-user">{{ current_user.name[0]|upper }}</div>{% endif %}
+                </div>
+                {% endfor %}
+
+            </div>
+
+            <!-- suggestions -->
+            <div class="wn-chat-suggest" id="suggest">
+                <button class="wn-suggest-chip">How is {{ animal.name }}'s weight trend?</button>
+                <button class="wn-suggest-chip">Is {{ animal.name }}'s stress level normal?</button>
+                <button class="wn-suggest-chip">What should I feed {{ animal.name }}?</button>
+                <button class="wn-suggest-chip">Tips to reduce stress for {{ animal.name }}?</button>
+            </div>
+
+            <!-- photo preview (before sending) -->
+            <div class="wn-chat-photo-preview d-none" id="photoPreviewWrap">
+                <img id="photoPreview" alt="Selected photo">
+                <button type="button" id="removePhoto" class="wn-photo-remove" title="Remove photo">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <!-- input -->
+            <form class="wn-chat-input" id="chatForm">
+                <input type="file" id="photoInput" accept="image/*" class="d-none">
+                <button type="button" id="attachBtn" class="btn wn-btn-outline" title="Upload a photo for injury/sickness check"
+                        {% if not ai_ready %}disabled{% endif %}>
+                    <i class="bi bi-camera"></i>
+                </button>
+                <input type="text" id="chatInput" class="form-control wn-input"
+                       placeholder="Ask about {{ animal.name }}, or attach a photo to check for injury/sickness..." autocomplete="off"
+                       {% if not ai_ready %}disabled{% endif %}>
+                <button type="submit" class="btn wn-btn-primary" {% if not ai_ready %}disabled{% endif %}>
+                    <i class="bi bi-send"></i>
+                </button>
+            </form>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const animalId = {{ animal.id }};
+    const messagesEl = document.getElementById('messages');
+    const form = document.getElementById('chatForm');
+    const input = document.getElementById('chatInput');
+    const suggest = document.getElementById('suggest');
+    const attachBtn = document.getElementById('attachBtn');
+    const photoInput = document.getElementById('photoInput');
+    const previewWrap = document.getElementById('photoPreviewWrap');
+    const previewImg = document.getElementById('photoPreview');
+    const removePhotoBtn = document.getElementById('removePhoto');
+    let selectedPhoto = null;
+
+    // render any server-provided assistant messages as markdown
+    document.querySelectorAll('.wn-msg-bubble[data-md]').forEach(el => {
+        el.innerHTML = marked.parse(el.textContent);
+    });
+    scrollDown();
+
+    function scrollDown() { messagesEl.scrollTop = messagesEl.scrollHeight; }
+
+    function addMessage(role, text, asMarkdown, photoUrl) {
+        const wrap = document.createElement('div');
+        wrap.className = 'wn-msg ' + (role === 'user' ? 'wn-msg-user' : 'wn-msg-ai');
+        const avatar = document.createElement('div');
+        if (role === 'user') {
+            avatar.className = 'wn-msg-avatar wn-msg-avatar-user';
+            avatar.textContent = '{{ current_user.name[0]|upper }}';
+        } else {
+            avatar.className = 'wn-msg-avatar';
+            avatar.innerHTML = '<i class="bi bi-robot"></i>';
+        }
+
+        const bubbleWrap = document.createElement('div');
+        bubbleWrap.className = 'wn-msg-bubble-wrap';
+
+        if (photoUrl) {
+            const img = document.createElement('img');
+            img.src = photoUrl;
+            img.className = 'wn-chat-photo';
+            bubbleWrap.appendChild(img);
+        }
+
+        const bubble = document.createElement('div');
+        bubble.className = 'wn-msg-bubble';
+        if (asMarkdown) { bubble.innerHTML = marked.parse(text); }
+        else { bubble.textContent = text; }
+        bubbleWrap.appendChild(bubble);
+
+        if (role === 'user') { wrap.appendChild(bubbleWrap); wrap.appendChild(avatar); }
+        else { wrap.appendChild(avatar); wrap.appendChild(bubbleWrap); }
+        messagesEl.appendChild(wrap);
+        scrollDown();
+        return bubble;
+    }
+
+    function addTyping() {
+        const wrap = document.createElement('div');
+        wrap.className = 'wn-msg wn-msg-ai';
+        wrap.id = 'typing';
+        wrap.innerHTML = '<div class="wn-msg-avatar"><i class="bi bi-robot"></i></div>' +
+            '<div class="wn-msg-bubble"><span class="wn-typing"><span></span><span></span><span></span></span></div>';
+        messagesEl.appendChild(wrap);
+        scrollDown();
+    }
+    function removeTyping() { const t = document.getElementById('typing'); if (t) t.remove(); }
+
+    // photo attach / preview
+    attachBtn.addEventListener('click', () => photoInput.click());
+    photoInput.addEventListener('change', () => {
+        const file = photoInput.files[0];
+        if (!file) return;
+        selectedPhoto = file;
+        previewImg.src = URL.createObjectURL(file);
+        previewWrap.classList.remove('d-none');
+        input.placeholder = "Add a note about this photo (optional)...";
+    });
+    removePhotoBtn.addEventListener('click', () => {
+        selectedPhoto = null;
+        photoInput.value = '';
+        previewWrap.classList.add('d-none');
+        input.placeholder = "Ask about {{ animal.name }}, or attach a photo to check for injury/sickness...";
+    });
+
+    async function send(text) {
+        const photo = selectedPhoto;
+        if (!text && !photo) return;
+        suggest.style.display = 'none';
+
+        const localPhotoUrl = photo ? URL.createObjectURL(photo) : null;
+        addMessage('user', text || '(photo attached)', false, localPhotoUrl);
+
+        input.value = '';
+        input.disabled = true;
+        selectedPhoto = null;
+        photoInput.value = '';
+        previewWrap.classList.add('d-none');
+        input.placeholder = "Ask about {{ animal.name }}, or attach a photo to check for injury/sickness...";
+        addTyping();
+
+        try {
+            let res;
+            if (photo) {
+                const fd = new FormData();
+                fd.append('message', text);
+                fd.append('photo', photo);
+                res = await fetch(`/wildsight/${animalId}/message`, { method: 'POST', body: fd });
+            } else {
+                res = await fetch(`/wildsight/${animalId}/message`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                });
+            }
+            const data = await res.json();
+            removeTyping();
+            addMessage('assistant', data.reply || data.error || 'No response.', true);
+        } catch (err) {
+            removeTyping();
+            addMessage('assistant', '⚠️ Network error. Please try again.', false);
+        }
+        input.disabled = false;
+        input.focus();
+    }
+
+    form.addEventListener('submit', e => { e.preventDefault(); send(input.value.trim()); });
+
+    document.querySelectorAll('.wn-suggest-chip').forEach(chip => {
+        chip.addEventListener('click', () => send(chip.textContent));
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+        wnConfirm(
+            'Clear this conversation? This cannot be undone.',
+            async function () {
+                await fetch(`/wildsight/${animalId}/clear`, { method: 'POST' });
+                location.reload();
+            },
+            { confirmText: 'Clear' }
+        );
+    });
+</script>
+{% endblock %}
