@@ -1,118 +1,114 @@
 """Lightweight local RAG for WildNest AI.
 
 Retrieves relevant species care-reference chunks (from rag/documents/) to ground
-and cite answers with real sources. This is STRICTLY SECONDARY: the pet's own
-profile, medical history, and logged analytics (temperature, humidity, weight,
-feeding, stress, activity) always come first and are never overridden by anything
-retrieved here — see build_system_context() in wildsight_ai.py for how the two
-are combined. Runs entirely locally (embeddings + vector search) — no API calls,
-no effect on Gemini quota. Any failure here degrades silently to "no reference
-material available" rather than breaking the core chat, which always works.
+and cite answers with real sources. Uses Gemini's embedding API for vectors and
+pure-Python cosine similarity for retrieval — no heavy ML frameworks needed.
+Any failure degrades silently to "no reference material available".
 """
 import os
 import re
+import json
+import math
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DOCS_DIR = os.path.join(_BASE_DIR, 'rag', 'documents')
-DB_DIR = os.path.join(_BASE_DIR, 'rag', 'vectordb')
-COLLECTION_NAME = 'wildnest_care_docs'
-EMBED_MODEL_NAME = 'all-MiniLM-L6-v2'
+CACHE_PATH = os.path.join(_BASE_DIR, 'rag', 'embeddings_cache.json')
+EMBED_MODEL = 'models/text-embedding-004'
 
-_collection = None
-_embedder = None
+_index = None
 
 
-def _get_embedder():
-    global _embedder
-    if _embedder is None:
-        from sentence_transformers import SentenceTransformer
-        _embedder = SentenceTransformer(EMBED_MODEL_NAME)
-    return _embedder
+def _embed(texts, task_type='retrieval_document'):
+    import google.generativeai as genai
+    genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+    result = genai.embed_content(
+        model=EMBED_MODEL,
+        content=texts,
+        task_type=task_type,
+    )
+    return result['embedding']
 
 
 def _chunk_document(text):
-    """Split into paragraph-level chunks (blank-line separated), stripped.
-    Drops the leading 'Species: ... Care Reference' title line — it's pure
-    metadata with no retrievable content, and its short/generic embedding was
-    observed crowding out genuinely relevant chunks in top-k search."""
     parts = re.split(r'\n\s*\n', text.strip())
     chunks = [p.strip() for p in parts if p.strip()]
     return [c for c in chunks if not c.startswith('Species:')]
 
 
-def _index_documents(collection):
+def _cosine_sim(a, b):
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(x * x for x in b))
+    if na == 0 or nb == 0:
+        return 0.0
+    return dot / (na * nb)
+
+
+def _build_index():
+    global _index
+    if _index is not None:
+        return _index
+
+    if os.path.exists(CACHE_PATH):
+        with open(CACHE_PATH, 'r', encoding='utf-8') as f:
+            _index = json.load(f)
+        return _index
+
     if not os.path.isdir(DOCS_DIR):
-        return
-    embedder = _get_embedder()
-    ids, texts, metadatas = [], [], []
+        _index = {'chunks': [], 'embeddings': [], 'metadatas': []}
+        return _index
+
+    chunks, metadatas = [], []
     for fname in sorted(os.listdir(DOCS_DIR)):
         if not fname.endswith('.txt'):
             continue
         species_key = fname[:-4]
         with open(os.path.join(DOCS_DIR, fname), 'r', encoding='utf-8') as f:
             content = f.read()
-        for i, chunk in enumerate(_chunk_document(content)):
-            ids.append(f'{species_key}-{i}')
-            texts.append(chunk)
+        for chunk in _chunk_document(content):
+            chunks.append(chunk)
             metadatas.append({'source': fname, 'species_key': species_key})
-    if not texts:
-        return
-    embeddings = embedder.encode(texts).tolist()
-    collection.add(ids=ids, documents=texts, metadatas=metadatas, embeddings=embeddings)
 
+    if not chunks:
+        _index = {'chunks': [], 'embeddings': [], 'metadatas': []}
+        return _index
 
-def _get_collection():
-    global _collection
-    if _collection is not None:
-        return _collection
-    import chromadb
-    os.makedirs(DB_DIR, exist_ok=True)
-    client = chromadb.PersistentClient(path=DB_DIR)
-    _collection = client.get_or_create_collection(COLLECTION_NAME)
-    if _collection.count() == 0:
-        _index_documents(_collection)
-    return _collection
+    embeddings = _embed(chunks, task_type='retrieval_document')
+    _index = {'chunks': chunks, 'embeddings': embeddings, 'metadatas': metadatas}
+
+    os.makedirs(os.path.dirname(CACHE_PATH), exist_ok=True)
+    with open(CACHE_PATH, 'w', encoding='utf-8') as f:
+        json.dump(_index, f)
+
+    return _index
 
 
 def warmup():
-    """Eagerly load BOTH the embedding model AND the vector index. Takes ~20-40s
-    the very first time, then is instant afterwards. Call this once at APP
-    STARTUP (in a background thread) so that cost never lands on whichever user
-    happens to send the first chat message.
-
-    IMPORTANT: _get_embedder() must be called explicitly here — _get_collection()
-    alone does NOT load it once the vector store already has documents indexed
-    (the embedder is only touched during indexing, or later during an actual
-    retrieve() call to encode the query). Skipping this was a real bug: the
-    collection warmed up in ~2s while the embedder — where the real 20-40s
-    cost lives — stayed cold until the first real user request hit it anyway."""
     try:
-        _get_embedder()
-        _get_collection()
+        _build_index()
     except Exception:
-        pass  # warmup is a nice-to-have; retrieve() will just lazy-load on first real use
+        pass
 
 
 def pretty_source(filename):
-    """'sulcata_tortoise.txt' -> 'Sulcata Tortoise Care Reference'"""
     name = filename[:-4] if filename.endswith('.txt') else filename
     return name.replace('_', ' ').title() + ' Care Reference'
 
 
 def retrieve(species, query, k=3):
-    """Return up to k relevant reference chunks as [{'text', 'source'}, ...].
-    Returns [] on ANY failure (missing docs, model load issue, etc.) — RAG is a
-    bonus layer that must never break the core chat, which works fine without it."""
     try:
-        collection = _get_collection()
-        if collection.count() == 0:
+        index = _build_index()
+        if not index['chunks']:
             return []
-        embedder = _get_embedder()
         search_text = f'{species}: {query}'.strip(': ')
-        query_embedding = embedder.encode([search_text]).tolist()
-        results = collection.query(query_embeddings=query_embedding, n_results=k)
-        docs = (results.get('documents') or [[]])[0]
-        metas = (results.get('metadatas') or [[]])[0]
-        return [{'text': d, 'source': m.get('source', 'reference')} for d, m in zip(docs, metas)]
+        query_emb = _embed([search_text], task_type='retrieval_query')[0]
+
+        scored = []
+        for i, emb in enumerate(index['embeddings']):
+            scored.append((_cosine_sim(query_emb, emb), i))
+        scored.sort(reverse=True)
+
+        return [{'text': index['chunks'][i], 'source': index['metadatas'][i].get('source', 'reference')}
+                for _, i in scored[:k]]
     except Exception:
         return []

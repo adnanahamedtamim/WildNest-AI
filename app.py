@@ -11,12 +11,9 @@ load_dotenv()
 
 
 def _warm_up_rag_in_background():
-    """RAG's embedding model + vector index take ~30-40s to load the very first
-    time. Doing that lazily on whichever user sends the first chat message means
-    THEY eat that wait. Instead, kick it off in a background thread right when
-    the server starts — by the time anyone actually opens the app, it's usually
-    already warm. Never blocks server startup; failure here is silently ignored,
-    since RAG still works fine (just slower on its own first real call)."""
+    """Pre-index RAG documents via Gemini embeddings so the first chat message
+    doesn't pay the indexing cost. Never blocks server startup; failure is
+    silently ignored since RAG degrades gracefully."""
     def _warm():
         import rag
         rag.warmup()

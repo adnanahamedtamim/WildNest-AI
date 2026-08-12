@@ -9,4 +9,5 @@ instance/
 static/uploads/*
 !static/uploads/.gitkeep
 rag/vectordb/
+rag/embeddings_cache.json
 .DS_Store
