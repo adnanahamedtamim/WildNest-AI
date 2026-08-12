@@ -1,5 +1,6 @@
 venv/
 .env
+.gemini_model_cache.json
 __pycache__/
 *.pyc
 *.pyo

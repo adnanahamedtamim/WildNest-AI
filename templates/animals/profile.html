@@ -22,10 +22,27 @@
         <!-- HERO -->
         <div class="wn-card mb-4 wn-hero">
             {% if is_owner %}
-            <a href="{{ url_for('wildsight.chat', animal_id=animal.id) }}" class="wn-ai-fab" title="Chat with WildNest AI">
-                <i class="bi bi-robot"></i>
-                <span>WildNest AI</span>
-            </a>
+            <div class="wn-hero-fabs">
+                {% if animal.created_by_id != animal.owner_id %}
+                <form method="POST" action="{{ url_for('animals.toggle_profile_privacy', animal_id=animal.id) }}">
+                    <button type="submit" class="wn-privacy-fab {{ 'is-private' if animal.profile_private else '' }}"
+                            title="{{ 'Previous owner cannot view this profile' if animal.profile_private else 'Previous owner can view this profile' }}">
+                        <i class="bi {{ 'bi-lock-fill' if animal.profile_private else 'bi-unlock' }}"></i>
+                        <span>{{ 'Private' if animal.profile_private else 'Make Private' }}</span>
+                    </button>
+                </form>
+                {% endif %}
+                <a href="{{ url_for('wildsight.chat', animal_id=animal.id) }}" class="wn-ai-fab" title="Chat with WildNest AI">
+                    <i class="bi bi-robot"></i>
+                    <span>WildNest AI</span>
+                    <span class="wn-spark wn-spark-1" aria-hidden="true"></span>
+                    <span class="wn-spark wn-spark-2" aria-hidden="true"></span>
+                    <span class="wn-spark wn-spark-3" aria-hidden="true"></span>
+                    <span class="wn-spark wn-spark-4" aria-hidden="true"></span>
+                    <span class="wn-spark wn-spark-5" aria-hidden="true"></span>
+                    <span class="wn-spark wn-spark-6" aria-hidden="true"></span>
+                </a>
+            </div>
             {% endif %}
             <div class="p-4 d-flex flex-column flex-md-row gap-4 align-items-center align-items-md-start">
                 <div class="wn-avatar-wrap">
@@ -86,18 +103,30 @@
                         <a href="{{ url_for('animals.log_env', animal_id=animal.id) }}" class="btn btn-sm wn-btn-primary">
                             <i class="bi bi-clipboard-plus me-1"></i>Log Data
                         </a>
-                        <a href="{{ url_for('animals.medical', animal_id=animal.id) }}" class="btn btn-sm wn-btn-outline">
+                        <a href="{{ url_for('animals.medical', animal_id=animal.id) }}" class="btn btn-sm wn-btn-tint wn-btn-tint-blue">
                             <i class="bi bi-file-earmark-medical me-1"></i>Medical History
                         </a>
-                        <a href="#" class="btn btn-sm wn-btn-outline">
+                        {% if animal.active_listing %}
+                        <form method="POST" action="{{ url_for('feed.unlist', animal_id=animal.id) }}"
+                              id="unlistForm" class="d-inline">
+                            <button type="submit" class="btn btn-sm wn-btn-tint wn-btn-tint-rose">
+                                <i class="bi bi-x-circle me-1"></i>Remove Listing
+                            </button>
+                        </form>
+                        {% else %}
+                        <a href="{{ url_for('feed.create_listing', animal_id=animal.id) }}" class="btn btn-sm wn-btn-tint wn-btn-tint-terracotta">
                             <i class="bi bi-megaphone me-1"></i>List for Rehoming
                         </a>
-                        <a href="#" class="btn btn-sm wn-btn-outline">
+                        {% endif %}
+                        <a href="{{ url_for('animals.handover', animal_id=animal.id) }}" class="btn btn-sm wn-btn-tint wn-btn-tint-green">
+                            <i class="bi bi-arrow-left-right me-1"></i>Complete Handover
+                        </a>
+                        <a href="{{ url_for('animals.passport', animal_id=animal.id) }}" class="btn btn-sm wn-btn-tint wn-btn-tint-sand">
                             <i class="bi bi-qr-code me-1"></i>QR Passport
                         </a>
                         <form method="POST" action="{{ url_for('animals.generate_meal', animal_id=animal.id) }}"
                               id="mealPlanForm" class="d-inline">
-                            <button type="submit" class="btn btn-sm wn-btn-outline" id="mealPlanBtn">
+                            <button type="submit" class="btn btn-sm wn-btn-tint wn-btn-tint-amber" id="mealPlanBtn">
                                 <i class="bi bi-sun me-1"></i>Generate Today's Meal
                             </button>
                         </form>
@@ -114,12 +143,14 @@
 
         <!-- TODAY'S MEAL PLAN -->
         {% if animal.meal_plan_content %}
-        <div class="wn-card p-4 mb-4 wn-meal-plan-card">
+        <div class="wn-card p-4 mb-4 wn-meal-plan-card" id="mealPlanCard">
             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                 <div>
                     <h6 class="fw-bold mb-1"><i class="bi bi-sun me-2 wn-green"></i>Today's Meal Plan</h6>
                     <small class="text-muted">
-                        Generated {{ animal.meal_plan_generated_at.strftime('%b %d, %I:%M %p') }}
+                        Generated <span id="mealPlanGeneratedAt" data-utc="{{ animal.meal_plan_generated_at.isoformat() }}Z">
+                            {{ animal.meal_plan_generated_at.strftime('%b %d, %I:%M %p') }} UTC
+                        </span>
                         {% if animal.meal_plan_weather_summary %} · {{ animal.meal_plan_weather_summary }}{% endif %}
                     </small>
                 </div>
@@ -129,8 +160,8 @@
                         <i class="bi bi-arrow-clockwise me-1"></i>Regenerate
                     </button>
                     {% endif %}
-                    <button type="button" id="mealPlanToggle" class="btn btn-sm wn-btn-outline" title="Minimize">
-                        <i class="bi bi-chevron-up"></i>
+                    <button type="button" id="mealPlanClose" class="btn btn-sm wn-btn-outline" title="Dismiss">
+                        <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
             </div>
@@ -328,7 +359,7 @@
             {% endif %}
         </div>
 
-        <!-- DANGER ZONE -->
+        <!-- DANGER ZONE (owner only — a true, permanent delete) -->
         {% if is_owner %}
         <div class="wn-card wn-danger-zone mt-4 p-4">
             <h6 class="fw-bold mb-1 wn-rose"><i class="bi bi-exclamation-triangle me-2"></i>Danger Zone</h6>
@@ -343,12 +374,40 @@
         </div>
         {% endif %}
 
+        <!-- REMOVE FROM MY DASHBOARD (creator, no longer owner — never touches the owner's copy) -->
+        {% if is_creator and not is_owner %}
+        <div class="wn-card mt-4 p-4">
+            <h6 class="fw-bold mb-1"><i class="bi bi-eye-slash me-2 wn-green"></i>Remove From My Dashboard</h6>
+            <p class="text-muted small mb-3">
+                {{ animal.name }} now belongs to {{ animal.owner.name }}. This only hides it from
+                <strong>your</strong> dashboard — {{ animal.owner.name.split()[0] }} keeps full, untouched access to their pet.
+            </p>
+            <form method="POST" action="{{ url_for('animals.hide_from_dashboard', animal_id=animal.id) }}" id="hideForm">
+                <button type="submit" class="btn wn-btn-outline">
+                    <i class="bi bi-eye-slash me-2"></i>Remove From My Dashboard
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
     </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
+    // Plotly's 'responsive' config measures the container's width the instant its
+    // script runs. On a slower mobile connection the CSS/fonts may not have finished
+    // loading yet at that point, so it can lock in the wrong width and never notice —
+    // force every chart to re-measure once everything has truly finished loading.
+    window.addEventListener('load', function () {
+        if (window.Plotly) {
+            document.querySelectorAll('.js-plotly-plot').forEach(function (gd) {
+                Plotly.Plots.resize(gd);
+            });
+        }
+    });
+
     const animalPhotoInput = document.getElementById('animalPhotoInput');
     if (animalPhotoInput) {
         animalPhotoInput.addEventListener('change', function () {
@@ -362,25 +421,28 @@
         document.getElementById('mealPlanContent').innerHTML = marked.parse(mealPlanRaw.textContent);
     }
 
-    // minimize/expand the meal plan card (remembered per pet)
-    const mealPlanToggle = document.getElementById('mealPlanToggle');
-    if (mealPlanToggle) {
-        const mealPlanContent = document.getElementById('mealPlanContent');
-        const storageKey = 'wn_meal_collapsed_{{ animal.id }}';
-        const icon = mealPlanToggle.querySelector('i');
-
-        function applyState(collapsed) {
-            mealPlanContent.classList.toggle('d-none', collapsed);
-            icon.className = collapsed ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
-            mealPlanToggle.title = collapsed ? 'Expand' : 'Minimize';
+    // show the "Generated at" timestamp in the viewer's own local time, not server UTC
+    const mealPlanGeneratedAt = document.getElementById('mealPlanGeneratedAt');
+    if (mealPlanGeneratedAt) {
+        const d = new Date(mealPlanGeneratedAt.dataset.utc);
+        if (!isNaN(d)) {
+            mealPlanGeneratedAt.textContent = d.toLocaleString(undefined, {
+                month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+            });
         }
+    }
 
-        applyState(localStorage.getItem(storageKey) === '1');
-
-        mealPlanToggle.addEventListener('click', function () {
-            const collapsed = !mealPlanContent.classList.contains('d-none');
-            applyState(collapsed);
-            localStorage.setItem(storageKey, collapsed ? '1' : '0');
+    // dismiss the meal plan card entirely (remembered per pet)
+    const mealPlanCard = document.getElementById('mealPlanCard');
+    const mealPlanClose = document.getElementById('mealPlanClose');
+    const mealPlanDismissKey = 'wn_meal_dismissed_{{ animal.id }}';
+    if (mealPlanCard && localStorage.getItem(mealPlanDismissKey) === '1') {
+        mealPlanCard.classList.add('d-none');
+    }
+    if (mealPlanClose) {
+        mealPlanClose.addEventListener('click', function () {
+            mealPlanCard.classList.add('d-none');
+            localStorage.setItem(mealPlanDismissKey, '1');
         });
     }
 
@@ -388,6 +450,7 @@
     const mealPlanForm = document.getElementById('mealPlanForm');
     if (mealPlanForm) {
         mealPlanForm.addEventListener('submit', function () {
+            localStorage.removeItem(mealPlanDismissKey); // regenerating brings the card back
             document.querySelectorAll('#mealPlanBtn, button[form="mealPlanForm"]').forEach(function (btn) {
                 btn.disabled = true;
                 btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
@@ -421,6 +484,19 @@
                 "This will remove all logged data, photos, and chat history. This cannot be undone.",
                 function () { deleteForm.submit(); },
                 { confirmText: 'Delete' }
+            );
+        });
+    }
+
+    const hideForm = document.getElementById('hideForm');
+    if (hideForm) {
+        hideForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            wnConfirm(
+                "Remove {{ animal.name }} from your dashboard?\n\n" +
+                "This only affects your view — {{ animal.owner.name }} keeps full access to their pet.",
+                function () { hideForm.submit(); },
+                { confirmText: 'Remove' }
             );
         });
     }
