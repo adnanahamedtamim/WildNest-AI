@@ -9,3 +9,4 @@ sentence-transformers
 pillow
 qrcode
 werkzeug
+gunicorn
