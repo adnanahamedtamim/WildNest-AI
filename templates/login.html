@@ -1,19 +1,35 @@
 {% extends "base.html" %}
 {% block title %}Login — WildNest{% endblock %}
+{% block body_class %}wn-auth-page{% endblock %}
+{% block main_class %}wn-auth-split-wrap{% endblock %}
+{% block show_footer %}{% endblock %}
 
 {% block content %}
-<div class="wn-auth-wrap">
-    <div class="wn-auth-inner">
+<div class="wn-auth-split" id="wnAuthSplit">
 
-        <div class="text-center mb-3">
-            <div style="font-size:2.6rem;">🐾</div>
-            <h2 class="fw-bold wn-green mt-1 mb-1">WildNest</h2>
-            <p class="text-muted small mb-0">The pet's complete story, always with them.</p>
+    <!-- LEFT — branding -->
+    <div class="wn-auth-brand">
+        <div class="wn-auth-brand-content">
+            <span class="wn-auth-paw">🐾</span>
+            <h1 class="fw-bold wn-green mb-2 wn-auth-title">WildNest</h1>
+            <p class="wn-auth-tagline">The pet's complete story,<br>always with them.</p>
+        </div>
+        <div class="wn-auth-brand-art">
+            <img src="{{ url_for('static', filename='images/login-pets.png') }}"
+                 alt="Cat and dog looking up" class="wn-auth-brand-img">
+        </div>
+    </div>
+
+    <!-- RIGHT — login form -->
+    <div class="wn-auth-form-side">
+        <div class="wn-auth-cat-wrap">
+            <img src="{{ url_for('static', filename='images/login-cat.png') }}"
+                 alt="Curious cat peeking" class="wn-auth-cat-img">
         </div>
 
-        <div class="wn-card p-4">
-            <h6 class="fw-bold mb-4">Sign In</h6>
-            <form method="POST" novalidate>
+        <div class="wn-card p-4 wn-auth-form-card">
+            <h5 class="fw-bold mb-4">Sign In</h5>
+            <form method="POST" novalidate id="wnLoginForm">
                 <div class="mb-3">
                     <label class="form-label text-muted small">Email Address</label>
                     <input type="email" name="email" class="form-control wn-input"
@@ -37,7 +53,49 @@
                 New to WildNest? <a href="{{ url_for('auth.register') }}" class="wn-link">Create account</a>
             </p>
         </div>
-
     </div>
+
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    (function () {
+        var split = document.getElementById('wnAuthSplit');
+        var form = document.getElementById('wnLoginForm');
+        if (!split || !form) return;
+        var submitting = false;
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (submitting) return;
+            submitting = true;
+            var btn = form.querySelector('button[type="submit"]');
+            if (btn) btn.disabled = true;
+
+            fetch(window.location.href, {
+                method: 'POST',
+                body: new FormData(form),
+                credentials: 'same-origin'
+            }).then(function (resp) {
+                if (resp.redirected) {
+                    // credentials accepted — play the doors-open transition, then land on the dashboard
+                    split.classList.add('wn-auth-leaving');
+                    setTimeout(function () { window.location.href = resp.url; }, 550);
+                } else {
+                    // invalid credentials — re-render the page as-is (flash error included), no animation
+                    return resp.text().then(function (html) {
+                        document.open();
+                        document.write(html);
+                        document.close();
+                    });
+                }
+            }).catch(function () {
+                submitting = false;
+                if (btn) btn.disabled = false;
+                HTMLFormElement.prototype.submit.call(form);
+            });
+        });
+    })();
+</script>
 {% endblock %}

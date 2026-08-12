@@ -16,7 +16,8 @@ WEATHER_CODES = {
 
 def get_current_weather(location_text):
     """Look up today's temperature/humidity for a free-text location.
-    Returns a dict {temp_f, temp_c, humidity_pct, description, place_name} or None."""
+    Returns a dict {temp_f, temp_c, humidity_pct, description, place_name,
+    observed_at (location-local "YYYY-MM-DDTHH:MM"), timezone} or None."""
     if not location_text or not location_text.strip():
         return None
 
@@ -30,12 +31,15 @@ def get_current_weather(location_text):
 
         place = results[0]
         lat, lon = place['latitude'], place['longitude']
-        place_name = ', '.join(filter(None, [place.get('name'), place.get('country')]))
+        place_name = ', '.join(filter(None, [
+            place.get('name'), place.get('admin1'), place.get('country'),
+        ]))
 
         forecast = requests.get(FORECAST_URL, params={
             'latitude': lat, 'longitude': lon,
             'current': 'temperature_2m,relative_humidity_2m,weather_code',
             'temperature_unit': 'fahrenheit',
+            'timezone': 'auto',  # so 'current.time' is the location's own local time, not GMT
         }, timeout=6).json()
         current = forecast.get('current')
         if not current:
@@ -51,6 +55,8 @@ def get_current_weather(location_text):
             'humidity_pct': humidity,
             'description': WEATHER_CODES.get(code, 'Unknown'),
             'place_name': place_name or location_text,
+            'observed_at': current.get('time'),  # e.g. '2026-08-10T14:30' in the pet's local tz
+            'timezone': forecast.get('timezone'),  # e.g. 'Asia/Dhaka'
         }
     except Exception:
         return None

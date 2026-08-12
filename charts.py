@@ -82,10 +82,17 @@ def build_env_charts(logs):
     # 3. Feeding amount (bars)
     if has_data('feeding_amount_g'):
         fig = go.Figure()
+        # Categorical x-axis (log labels, not raw timestamps) so bar width is
+        # always evenly spaced by log count — a continuous date axis would size
+        # bars by the actual time gap between logs, making them razor-thin for
+        # a pet logged daily and fat for one logged every few days.
+        labels = [d.strftime('%b %d, %I:%M %p') for d in dates]
         fig.add_trace(go.Bar(
-            x=dates, y=series('feeding_amount_g'), name='Feeding (g)',
+            x=labels, y=series('feeding_amount_g'), name='Feeding (g)',
             marker_color=SAGE))
-        fig.update_layout(**_base_layout('Feeding Amount'))
+        layout = _base_layout('Feeding Amount')
+        layout['xaxis']['type'] = 'category'
+        fig.update_layout(**layout)
         charts['feeding'] = _div(fig)
 
     # 4. Stress & Activity (1-5)

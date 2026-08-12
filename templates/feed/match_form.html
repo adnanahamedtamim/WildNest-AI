@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Find My Match — WildNest{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <a href="{{ url_for('feed.browse') }}" class="btn btn-sm wn-btn-outline">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <div>
+                <h4 class="fw-bold mb-0"><i class="bi bi-stars me-2 wn-green"></i>Find My Matching Pets</h4>
+                <small class="text-muted">Tell us what you can offer — WildNest AI scores all {{ available_count }} listed pets for you.</small>
+            </div>
+        </div>
+
+        {% if not ai_ready %}
+        <div class="alert wn-alert alert-warning mb-3">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            WildNest AI isn't connected. Add your Gemini API key to <code>.env</code> to enable matching.
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('feed.match') }}">
+            <div class="wn-card p-4 mb-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Preferred Species</label>
+                        <select name="species" class="form-select wn-input">
+                            <option value="">Open to any</option>
+                            {% for s in all_species %}
+                            <option value="{{ s }}">{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Your Experience Level</label>
+                        <select name="experience" class="form-select wn-input">
+                            <option>Beginner — first exotic pet</option>
+                            <option selected>Intermediate — kept a few before</option>
+                            <option>Expert — experienced keeper</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Space / Enclosure Available</label>
+                        <select name="space" class="form-select wn-input">
+                            <option>Small (tabletop / small tank)</option>
+                            <option selected>Medium (dedicated enclosure)</option>
+                            <option>Large (room / outdoor space)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Daily Time You Can Give</label>
+                        <select name="time" class="form-select wn-input">
+                            <option>Low (under 30 min/day)</option>
+                            <option selected>Medium (30–60 min/day)</option>
+                            <option>High (1+ hours/day)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Climate You Can Maintain</label>
+                        <input type="text" name="climate" class="form-control wn-input"
+                               placeholder="e.g. warm & humid, or cool & dry">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Your Location</label>
+                        <input type="text" name="location" class="form-control wn-input"
+                               value="{{ default_location }}" placeholder="e.g. Austin, Texas">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label text-muted small">Anything else?</label>
+                        <textarea name="notes" rows="3" class="form-control wn-input"
+                                  placeholder="e.g. I have young kids, I work from home, I want a calm pet, I can't handle venomous species..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn wn-btn-primary px-4" id="matchBtn" {% if not ai_ready %}disabled{% endif %}>
+                <i class="bi bi-stars me-2"></i>Find My Matches
+            </button>
+        </form>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.querySelector('form').addEventListener('submit', function () {
+        const btn = document.getElementById('matchBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analysing all pets...';
+    });
+</script>
+{% endblock %}

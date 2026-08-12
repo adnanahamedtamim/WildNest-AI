@@ -20,6 +20,43 @@
         </div>
     </div>
 
+    <!-- VACCINATION COUNTDOWN -->
+    {% if vaccine_due %}
+    <div class="wn-vax-card wn-vax-{{ vaccine_due.state }} mb-4">
+        <div class="wn-vax-top">
+            <div class="wn-vax-icon">
+                {% if vaccine_due.state == 'overdue' %}🚨{% elif vaccine_due.state == 'soon' %}⏰{% else %}💉{% endif %}
+            </div>
+            <div class="flex-fill">
+                <div class="wn-vax-label">
+                    {% if vaccine_due.state == 'overdue' %}Vaccination Overdue
+                    {% elif vaccine_due.state == 'soon' %}Vaccination Due Soon
+                    {% else %}Next Vaccination{% endif %}
+                </div>
+                <div class="wn-vax-headline">
+                    {% if vaccine_due.days_remaining < 0 %}
+                    Overdue by {{ -vaccine_due.days_remaining }} day{{ 's' if -vaccine_due.days_remaining != 1 }} — schedule a vet visit
+                    {% elif vaccine_due.days_remaining == 0 %}
+                    Due today!
+                    {% else %}
+                    Due in {{ vaccine_due.days_remaining }} day{{ 's' if vaccine_due.days_remaining != 1 }}
+                    {% endif %}
+                </div>
+                <div class="wn-vax-sub">
+                    {{ vaccine_due.record.title }} · {{ vaccine_due.due_date.strftime('%B %d, %Y') }}
+                </div>
+            </div>
+            <div class="wn-vax-days-big">
+                {{ vaccine_due.days_remaining if vaccine_due.days_remaining >= 0 else -vaccine_due.days_remaining }}
+                <span>{{ 'days over' if vaccine_due.days_remaining < 0 else 'days left' }}</span>
+            </div>
+        </div>
+        <div class="wn-vax-bar-track">
+            <div class="wn-vax-bar-fill" style="width: {{ vaccine_due.progress_pct }}%;"></div>
+        </div>
+    </div>
+    {% endif %}
+
     <div class="row g-4">
 
         <!-- LEFT: TIMELINE -->

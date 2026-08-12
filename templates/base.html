@@ -11,11 +11,15 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
 
+<div class="wn-paw-trail" aria-hidden="true">
+    {% for i in range(1, 51) %}<span class="wn-paw wn-paw-{{ i }}"></span>{% endfor %}
+</div>
+
 <nav class="navbar navbar-expand-lg navbar-light wn-navbar sticky-top">
     <div class="container-fluid px-4">
         <a class="navbar-brand fw-bold d-flex align-items-center gap-2"
            href="{{ url_for('auth.dashboard_redirect') if current_user.is_authenticated else url_for('auth.login') }}">
-            <span style="font-size:1.4rem;">🐾</span>
+            <span style="font-size:1.7rem;">🐾</span>
             <span class="wn-logo-text">WildNest</span>
         </a>
 
@@ -32,11 +36,75 @@
                         <i class="bi bi-house-heart me-1"></i>My Pets
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('feed.') %}active{% endif %}"
+                       href="{{ url_for('feed.browse') }}">
+                        <i class="bi bi-megaphone me-1"></i>Rehoming Feed
+                    </a>
+                </li>
             </ul>
 
             <ul class="navbar-nav ms-auto align-items-center gap-2">
+                <li class="nav-item dropdown">
+                    <a class="nav-link position-relative wn-nav-icon-btn" href="#" id="wnBellToggle" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-bell {% if nav_has_emergency %}wn-bell-urgent{% endif %}"></i>
+                        {% if nav_unread_count %}
+                        <span class="wn-bell-badge {% if nav_has_emergency %}wn-bell-badge-urgent{% endif %}">{{ nav_unread_count if nav_unread_count < 10 else '9+' }}</span>
+                        {% endif %}
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-end wn-notif-panel p-0" aria-labelledby="wnBellToggle">
+                        <div class="d-flex justify-content-between align-items-center wn-notif-header">
+                            <span class="fw-bold small">Notifications</span>
+                            {% if nav_unread_count %}
+                            <button type="button" id="wnMarkAllRead" class="btn btn-sm p-0 wn-link" style="font-size:0.75rem;">
+                                Mark all read
+                            </button>
+                            {% endif %}
+                        </div>
+                        <div class="wn-notif-list">
+                            {% if nav_notifications %}
+                            {% for n in nav_notifications %}
+                            <div class="wn-notif-item {% if not n.is_read %}wn-notif-unread{% endif %} {% if n.is_emergency %}wn-notif-emergency{% endif %}"
+                               data-notif-id="{{ n.id }}"
+                               data-photo="{{ url_for('static', filename='uploads/' + n.animal.photo_path) if n.animal.photo_path else '' }}"
+                               data-name="{{ n.animal.name }}"
+                               data-title="{{ n.title }}"
+                               data-body="{{ n.body }}"
+                               data-day="{{ n.day_number }}"
+                               data-category="{{ n.category }}"
+                               data-profile-url="{{ url_for('animals.profile', animal_id=n.animal_id) }}">
+                                {% if n.animal.photo_path %}
+                                <img src="{{ url_for('static', filename='uploads/' + n.animal.photo_path) }}" class="wn-notif-avatar" alt="">
+                                {% else %}
+                                <div class="wn-notif-avatar-placeholder">🐾</div>
+                                {% endif %}
+                                <div class="wn-notif-body">
+                                    <div class="wn-notif-title">{{ n.title }}</div>
+                                    <div class="wn-notif-text">{{ n.body }}</div>
+                                    <div class="wn-notif-time">
+                                        {% if n.category == 'transition' %}{{ n.animal.name }} · Day {{ n.day_number }}/30
+                                        {% else %}{{ n.animal.name }} · Medical Alert{% endif %}
+                                    </div>
+                                </div>
+                                {% if n.is_emergency %}<span class="wn-notif-dot wn-notif-dot-emergency"></span>
+                                {% elif not n.is_read %}<span class="wn-notif-dot"></span>{% endif %}
+                                <button type="button" class="wn-notif-delete" data-notif-id="{{ n.id }}" title="Delete">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <div class="text-center text-muted small py-4">
+                                <i class="bi bi-bell-slash" style="font-size:1.5rem; opacity:0.3;"></i>
+                                <p class="mb-0 mt-2">No notifications yet.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </li>
                 <li class="nav-item">
-                    <a class="nav-link d-flex align-items-center gap-2 {% if request.endpoint == 'main.account' %}active{% endif %}"
+                    <a class="nav-link wn-nav-icon-btn d-flex align-items-center gap-2 {% if request.endpoint == 'main.account' %}active{% endif %}"
                        href="{{ url_for('main.account') }}">
                         {% if current_user.photo_path %}
                         <img src="{{ url_for('static', filename='uploads/' + current_user.photo_path) }}"
@@ -44,11 +112,11 @@
                         {% else %}
                         <i class="bi bi-person-circle"></i>
                         {% endif %}
-                        <span class="small">{{ current_user.name }}</span>
+                        <span class="wn-navbar-name">{{ current_user.name }}</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link text-muted" href="{{ url_for('auth.logout') }}">
+                    <a class="nav-link wn-nav-icon-btn text-muted" href="{{ url_for('auth.logout') }}" title="Log out">
                         <i class="bi bi-box-arrow-right"></i>
                     </a>
                 </li>
@@ -77,7 +145,7 @@
 
 {% block show_footer %}
 <footer class="wn-footer text-center py-3 mt-auto">
-    <small class="text-muted">🐾 WildNest &copy; 2026 — AnimalHack 2026</small>
+    <small class="text-muted">🐾 WildNest &copy; 2026</small>
 </footer>
 {% endblock %}
 
@@ -95,6 +163,19 @@
             <button type="button" id="wnConfirmCancel" class="btn wn-btn-outline px-4">Cancel</button>
             <button type="button" id="wnConfirmOk" class="btn wn-btn-danger px-4">Confirm</button>
         </div>
+    </div>
+</div>
+
+<!-- NOTIFICATION READER (shows the pet's message: photo + short note, no full profile) -->
+<div id="wnNotifReader" class="wn-modal-overlay d-none">
+    <div class="wn-modal-card wn-notif-reader-card" onclick="event.stopPropagation()">
+        <button type="button" id="wnNotifReaderClose" class="wn-notif-reader-x"><i class="bi bi-x-lg"></i></button>
+        <img id="wnNotifReaderPhoto" class="wn-notif-reader-photo d-none" src="" alt="">
+        <div id="wnNotifReaderPhotoPlaceholder" class="wn-notif-reader-photo-placeholder d-none">🐾</div>
+        <div class="wn-notif-reader-day" id="wnNotifReaderDay"></div>
+        <h6 class="fw-bold mt-2 mb-2" id="wnNotifReaderTitle"></h6>
+        <p class="wn-notif-reader-body" id="wnNotifReaderBody"></p>
+        <a href="#" id="wnNotifReaderLink" class="wn-link" style="font-size:0.82rem;">View full profile →</a>
     </div>
 </div>
 
@@ -157,6 +238,83 @@
             }
         });
     });
+
+    // notification bell — clicking a notification opens a short message reader
+    // (photo + note), not the full profile, and marks it read
+    const notifReader = document.getElementById('wnNotifReader');
+    const notifReaderPhoto = document.getElementById('wnNotifReaderPhoto');
+    const notifReaderPhotoPlaceholder = document.getElementById('wnNotifReaderPhotoPlaceholder');
+    const notifReaderDay = document.getElementById('wnNotifReaderDay');
+    const notifReaderTitle = document.getElementById('wnNotifReaderTitle');
+    const notifReaderBody = document.getElementById('wnNotifReaderBody');
+    const notifReaderLink = document.getElementById('wnNotifReaderLink');
+
+    document.querySelectorAll('.wn-notif-item[data-notif-id]').forEach(function (el) {
+        el.addEventListener('click', function () {
+            const id = this.dataset.notifId;
+            fetch(`/notifications/${id}/read`, { method: 'POST' });
+            this.classList.remove('wn-notif-unread');
+            const dot = this.querySelector('.wn-notif-dot');
+            if (dot) dot.remove();
+
+            if (this.dataset.photo) {
+                notifReaderPhoto.src = this.dataset.photo;
+                notifReaderPhoto.classList.remove('d-none');
+                notifReaderPhotoPlaceholder.classList.add('d-none');
+            } else {
+                notifReaderPhoto.classList.add('d-none');
+                notifReaderPhotoPlaceholder.classList.remove('d-none');
+            }
+            notifReaderDay.textContent = this.dataset.category === 'transition'
+                ? `${this.dataset.name} · Day ${this.dataset.day}/30`
+                : `${this.dataset.name} · Medical Alert`;
+            notifReaderTitle.textContent = this.dataset.title;
+            notifReaderBody.textContent = this.dataset.body;
+            notifReaderLink.href = this.dataset.profileUrl;
+
+            notifReader.classList.remove('d-none');
+        });
+    });
+
+    // delete a notification — stops the click from also opening the reader modal
+    document.querySelectorAll('.wn-notif-delete[data-notif-id]').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const id = this.dataset.notifId;
+            const item = this.closest('.wn-notif-item');
+            fetch(`/notifications/${id}/delete`, { method: 'POST' }).then(function () {
+                const list = item.closest('.wn-notif-list');
+                item.remove();
+                if (list && !list.querySelector('.wn-notif-item')) {
+                    list.innerHTML = `<div class="text-center text-muted small py-4">
+                        <i class="bi bi-bell-slash" style="font-size:1.5rem; opacity:0.3;"></i>
+                        <p class="mb-0 mt-2">No notifications yet.</p>
+                    </div>`;
+                }
+            });
+        });
+    });
+    if (notifReader) {
+        notifReader.addEventListener('click', function () { notifReader.classList.add('d-none'); });
+        document.getElementById('wnNotifReaderClose').addEventListener('click', function () {
+            notifReader.classList.add('d-none');
+        });
+    }
+    const wnMarkAllRead = document.getElementById('wnMarkAllRead');
+    if (wnMarkAllRead) {
+        wnMarkAllRead.addEventListener('click', function (e) {
+            e.preventDefault();
+            fetch('/notifications/read-all', { method: 'POST' }).then(function () {
+                document.querySelectorAll('.wn-notif-unread').forEach(function (el) {
+                    el.classList.remove('wn-notif-unread');
+                    const dot = el.querySelector('.wn-notif-dot');
+                    if (dot) dot.remove();
+                });
+                document.querySelector('.wn-bell-badge')?.remove();
+                wnMarkAllRead.remove();
+            });
+        });
+    }
 </script>
 {% block extra_scripts %}{% endblock %}
 </body>

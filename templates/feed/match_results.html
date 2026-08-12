@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Your Matches — WildNest{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-2">
+    <a href="{{ url_for('feed.match') }}" class="btn btn-sm wn-btn-outline">
+        <i class="bi bi-arrow-left me-1"></i>Adjust
+    </a>
+    <h4 class="fw-bold mb-0"><i class="bi bi-stars me-2 wn-green"></i>Your Pet Matches</h4>
+</div>
+<p class="text-muted small mb-4">
+    Ranked by how well each listed pet fits your needs — best matches first.
+</p>
+
+{% if results %}
+<div class="row g-3">
+    {% for item in results %}
+    {% set animal = item.animal %}
+    <div class="col-md-6 col-lg-4">
+        <a href="{{ url_for('feed.detail', animal_id=animal.id) }}" class="text-decoration-none">
+            <div class="wn-card wn-animal-card wn-match-card h-100">
+                <div class="wn-match-badge
+                    {% if item.score >= 75 %}wn-match-high{% elif item.score >= 50 %}wn-match-mid{% else %}wn-match-low{% endif %}">
+                    {{ item.score }}%
+                </div>
+                {% if animal.photo_path %}
+                <img src="{{ url_for('static', filename='uploads/' + animal.photo_path) }}"
+                     class="wn-feed-img" alt="{{ animal.name }}">
+                {% else %}
+                <div class="wn-feed-img-placeholder">🐾</div>
+                {% endif %}
+                <div class="p-3">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <h6 class="fw-bold mb-0 text-truncate">{{ animal.name }}</h6>
+                        {% if animal.origin == 'rescue' %}
+                        <span class="badge wn-badge-green">Rescue</span>
+                        {% else %}
+                        <span class="badge wn-badge-blue">Personal</span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted d-block mb-2 text-truncate">
+                        <em>{{ animal.common_name or animal.species }}</em>
+                        {% if animal.age_years %} · {{ animal.age_years }} yrs{% endif %}
+                    </small>
+                    <div class="wn-match-reason">
+                        <i class="bi bi-quote me-1"></i>{{ item.reason }}
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 mt-4">
+    <div style="font-size:4rem;opacity:0.2;">🔍</div>
+    <h5 class="text-muted mt-3">No pets to match against yet</h5>
+    <p class="text-muted small">When other people list pets for rehoming, come back and find your match.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Rehoming Feed — WildNest{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <h4 class="fw-bold mb-0"><i class="bi bi-house-heart me-2 wn-green"></i>Rehoming Feed</h4>
+        <small class="text-muted">
+            {% if scope == 'mine' %}Your pets currently listed for rehoming.
+            {% else %}Pets looking for a caring new home — with their full living profile.{% endif %}
+        </small>
+    </div>
+    <form method="GET" class="d-flex align-items-center gap-2">
+        <label class="text-muted small mb-0"><i class="bi bi-funnel me-1"></i>Filter:</label>
+        <select name="species" class="form-select wn-input wn-feed-filter" onchange="this.form.submit()">
+            <option value="">All species</option>
+            {% for s in all_species %}
+            <option value="{{ s }}" {% if s == active_species %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+        <input type="hidden" name="scope" value="{{ scope }}">
+    </form>
+</div>
+
+<!-- SCOPE TOGGLE + AI MATCH -->
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <div class="wn-scope-toggle">
+        <a href="{{ url_for('feed.browse', scope='others') }}"
+           class="wn-scope-tab {% if scope != 'mine' %}active{% endif %}">
+            <i class="bi bi-globe me-1"></i>Browse Pets
+        </a>
+        <a href="{{ url_for('feed.browse', scope='mine') }}"
+           class="wn-scope-tab {% if scope == 'mine' %}active{% endif %}">
+            <i class="bi bi-person me-1"></i>My Listings{% if my_count %} <span class="wn-scope-count">{{ my_count }}</span>{% endif %}
+        </a>
+    </div>
+    {% if scope != 'mine' %}
+    <a href="{{ url_for('feed.match') }}" class="btn wn-btn-primary">
+        <i class="bi bi-stars me-2"></i>Find My Matching Pets
+    </a>
+    {% endif %}
+</div>
+
+{% if listings %}
+<div class="row g-3">
+    {% for animal in listings %}
+    {% set listing = animal.active_listing %}
+    <div class="col-6 col-md-4 col-lg-3">
+        <a href="{{ url_for('feed.detail', animal_id=animal.id) }}" class="text-decoration-none">
+            <div class="wn-card wn-animal-card wn-feed-card h-100">
+                {% if animal.photo_path %}
+                <img src="{{ url_for('static', filename='uploads/' + animal.photo_path) }}"
+                     class="wn-feed-img" alt="{{ animal.name }}">
+                {% else %}
+                <div class="wn-feed-img-placeholder">🐾</div>
+                {% endif %}
+                <div class="p-3">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <h6 class="fw-bold mb-0 text-truncate">{{ animal.name }}</h6>
+                        {% if animal.origin == 'rescue' %}
+                        <span class="badge wn-badge-green">Rescue</span>
+                        {% else %}
+                        <span class="badge wn-badge-blue">Personal</span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted d-block mb-2 text-truncate"><em>{{ animal.common_name or animal.species }}</em>
+                        {% if animal.age_years %} · {{ animal.age_years }} yrs{% endif %}
+                    </small>
+                    {% if listing.reason %}
+                    <p class="text-muted small mb-2 wn-feed-reason">{{ listing.reason }}</p>
+                    {% endif %}
+                    {% if animal.current_location %}
+                    <small class="text-muted d-block text-truncate"><i class="bi bi-geo-alt me-1"></i>{{ animal.current_location }}</small>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 mt-4">
+    <div style="font-size:4rem;opacity:0.2;">🌿</div>
+    {% if scope == 'mine' %}
+    <h5 class="text-muted mt-3">You haven't listed any pets{% if active_species %} matching "{{ active_species }}"{% endif %}</h5>
+    <p class="text-muted small">List a pet from its profile to offer it for rehoming.</p>
+    {% else %}
+    <h5 class="text-muted mt-3">No pets listed{% if active_species %} for "{{ active_species }}"{% endif %} yet</h5>
+    <p class="text-muted small">When someone lists a pet for rehoming, it will appear here.</p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}{{ animal.name }} — WildNest Passport{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+
+        <!-- HEADER -->
+        <div class="text-center mb-4">
+            <div style="font-size:2rem;">🐾</div>
+            <h5 class="fw-bold wn-green mb-0">WildNest Passport</h5>
+            <small class="text-muted">Public emergency profile</small>
+        </div>
+
+        <!-- IDENTITY -->
+        <div class="wn-card p-4 mb-3">
+            <div class="d-flex flex-column flex-md-row gap-4 align-items-center align-items-md-start">
+                {% if animal.photo_path %}
+                <img src="{{ url_for('static', filename='uploads/' + animal.photo_path) }}"
+                     class="wn-profile-photo" alt="{{ animal.name }}">
+                {% else %}
+                <div class="wn-profile-photo-placeholder">🐾</div>
+                {% endif %}
+                <div class="flex-fill text-center text-md-start">
+                    <h3 class="fw-bold mb-1">{{ animal.name }}</h3>
+                    <p class="text-muted mb-2">
+                        <em>{{ animal.species }}</em>{% if animal.common_name %} · {{ animal.common_name }}{% endif %}
+                    </p>
+                    <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-start">
+                        {% if animal.age_years %}
+                        <span class="wn-chip"><i class="bi bi-calendar3 me-1"></i>{{ animal.age_years }} yrs</span>
+                        {% endif %}
+                        {% if animal.sex %}
+                        <span class="wn-chip"><i class="bi bi-gender-ambiguous me-1"></i>{{ animal.sex }}</span>
+                        {% endif %}
+                        {% if animal.origin == 'rescue' %}
+                        <span class="badge wn-badge-green">🏥 Rescue</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EMERGENCY CARE INFO -->
+        <div class="wn-card p-4 mb-3">
+            <h6 class="fw-bold mb-3"><i class="bi bi-exclamation-triangle me-2 wn-rose"></i>Critical Care Info</h6>
+            <div class="wn-detail-block">
+                <div class="wn-detail-label">⚠️ Stress Triggers</div>
+                <div class="wn-detail-value">{{ animal.stress_triggers or 'None recorded.' }}</div>
+            </div>
+            <div class="wn-detail-block">
+                <div class="wn-detail-label">Dietary Requirements</div>
+                <div class="wn-detail-value">{{ animal.dietary_requirements or 'Not specified.' }}</div>
+            </div>
+        </div>
+
+        <!-- MEDICAL HISTORY -->
+        {% if animal.medical_records %}
+        <div class="wn-card p-4 mb-3">
+            <h6 class="fw-bold mb-3"><i class="bi bi-file-earmark-medical me-2 wn-green"></i>Medical History</h6>
+            {% for r in animal.medical_records[:6] %}
+            <div class="wn-detail-block">
+                <div class="d-flex justify-content-between">
+                    <span class="fw-semibold" style="font-size:0.9rem;">{{ r.title }}</span>
+                    <small class="text-muted">{{ r.record_date.strftime('%b %d, %Y') }}</small>
+                </div>
+                {% if r.notes %}<div class="text-muted" style="font-size:0.82rem;">{{ r.notes }}</div>{% endif %}
+                {% if r.treatment %}<div class="text-muted" style="font-size:0.78rem;"><i class="bi bi-capsule me-1"></i>{{ r.treatment }}</div>{% endif %}
+                {% if r.vet_name %}<div class="text-muted" style="font-size:0.78rem;"><i class="bi bi-hospital me-1"></i>{{ r.vet_name }}</div>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- OWNER CONTACT -->
+        <div class="wn-card p-4 wn-contact-card">
+            <h6 class="fw-bold mb-3"><i class="bi bi-person-lines-fill me-2 wn-green"></i>Owner Contact</h6>
+            <div class="d-flex align-items-center gap-3 mb-3">
+                {% if animal.owner.photo_path %}
+                <img src="{{ url_for('static', filename='uploads/' + animal.owner.photo_path) }}" class="wn-thumb" alt="">
+                {% else %}
+                <div class="wn-thumb-placeholder">{{ animal.owner.name[0]|upper }}</div>
+                {% endif %}
+                <div>
+                    <div class="fw-semibold">{{ animal.owner.name }}</div>
+                    {% if animal.owner.organization %}
+                    <small class="text-muted">{{ animal.owner.organization }}</small>
+                    {% endif %}
+                </div>
+            </div>
+            <a href="mailto:{{ animal.owner.email }}?subject=About {{ animal.name }} (WildNest passport)"
+               class="btn wn-btn-primary w-100">
+                <i class="bi bi-envelope me-2"></i>Email {{ animal.owner.name.split()[0] }}
+            </a>
+            <small class="text-muted d-block mt-2 text-center">{{ animal.owner.email }}</small>
+        </div>
+
+        <p class="text-muted text-center small mt-4 mb-0">
+            🐾 Powered by <a href="{{ url_for('auth.login') }}" class="wn-link">WildNest</a>
+        </p>
+
+    </div>
+</div>
+{% endblock %}

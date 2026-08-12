@@ -20,7 +20,12 @@
 <div class="row g-4">
     {% for item in cards %}
     <div class="col-md-6 col-lg-4">
-        <div class="wn-card wn-animal-card h-100">
+        <div class="wn-card wn-animal-card h-100 wn-dashcard">
+            {% if item.in_monitoring %}
+            <div class="wn-day-badge" title="Day {{ item.days_since_handover + 1 }} of the 30-day transition">
+                <i class="bi bi-heart-fill"></i> {{ item.days_since_handover + 1 }}/30
+            </div>
+            {% endif %}
             <div class="p-4">
 
                 <!-- Header -->
@@ -53,14 +58,7 @@
                 </div>
                 {% elif item.in_monitoring %}
                 <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-1">
-                        <small class="text-muted">Transition Period</small>
-                        <small class="wn-green fw-semibold">Day {{ item.days_since_handover }} / 30</small>
-                    </div>
-                    <div class="progress wn-progress">
-                        <div class="progress-bar wn-progress-bar"
-                             style="width: {{ [item.days_since_handover / 30 * 100, 100]|min|int }}%;"></div>
-                    </div>
+                    <span class="badge wn-badge-blue"><i class="bi bi-house-heart me-1"></i>Settling In</span>
                 </div>
                 {% elif item.animal.status == 'in_care' %}
                 <div class="mb-3">

@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}{{ animal.name }} — Rehoming — WildNest{% endblock %}
+
+{% block extra_head %}
+{% if charts %}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+
+        <!-- BACK -->
+        <a href="{{ url_for('feed.browse') }}" class="btn btn-sm wn-btn-outline mb-3">
+            <i class="bi bi-arrow-left me-1"></i>Back to Feed
+        </a>
+
+        <!-- HERO -->
+        <div class="wn-card mb-4">
+            <div class="p-4 d-flex flex-column flex-md-row gap-4 align-items-center align-items-md-start">
+                {% if animal.photo_path %}
+                <img src="{{ url_for('static', filename='uploads/' + animal.photo_path) }}"
+                     class="wn-profile-photo wn-lightbox-trigger"
+                     data-full="{{ url_for('static', filename='uploads/' + animal.photo_path) }}"
+                     alt="{{ animal.name }}" title="Click to view">
+                {% else %}
+                <div class="wn-profile-photo-placeholder">🐾</div>
+                {% endif %}
+
+                <div class="flex-fill text-center text-md-start">
+                    <div class="d-flex align-items-center gap-2 justify-content-center justify-content-md-start mb-1">
+                        <h3 class="fw-bold mb-0">{{ animal.name }}</h3>
+                        {% if animal.origin == 'rescue' %}
+                        <span class="badge wn-badge-green">🏥 Rescue</span>
+                        {% else %}
+                        <span class="badge wn-badge-blue">🏡 Personal</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-muted mb-2">
+                        <em>{{ animal.species }}</em>{% if animal.common_name %} · {{ animal.common_name }}{% endif %}
+                    </p>
+                    <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-start">
+                        {% if animal.age_years %}
+                        <span class="wn-chip"><i class="bi bi-calendar3 me-1"></i>{{ animal.age_years }} yrs</span>
+                        {% endif %}
+                        {% if animal.sex %}
+                        <span class="wn-chip"><i class="bi bi-gender-ambiguous me-1"></i>{{ animal.sex }}</span>
+                        {% endif %}
+                        {% if animal.current_location %}
+                        <span class="wn-chip"><i class="bi bi-geo-alt me-1"></i>{{ animal.current_location }}</span>
+                        {% endif %}
+                        <span class="wn-chip"><i class="bi bi-clock-history me-1"></i>{{ log_count }} logs</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- REHOMING REASON + CONTACT -->
+        {% if listing.reason or not is_owner %}
+        <div class="row g-4 mb-2">
+            <div class="{% if is_owner %}col-12{% else %}col-lg-7{% endif %}">
+                {% if listing.reason %}
+                <div class="wn-card p-4 h-100">
+                    <h6 class="fw-bold mb-2"><i class="bi bi-megaphone me-2 wn-green"></i>Why {{ animal.name }} needs a new home</h6>
+                    <p class="wn-detail-value mb-0">{{ listing.reason }}</p>
+                </div>
+                {% endif %}
+            </div>
+            {% if not is_owner %}
+            <div class="col-lg-5">
+                <div class="wn-card p-4 h-100 wn-contact-card">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-person-lines-fill me-2 wn-green"></i>Contact Owner</h6>
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        {% if animal.owner.photo_path %}
+                        <img src="{{ url_for('static', filename='uploads/' + animal.owner.photo_path) }}" class="wn-thumb" alt="">
+                        {% else %}
+                        <div class="wn-thumb-placeholder">{{ animal.owner.name[0]|upper }}</div>
+                        {% endif %}
+                        <div>
+                            <div class="fw-semibold">{{ animal.owner.name }}</div>
+                            {% if animal.owner.organization %}
+                            <small class="text-muted">{{ animal.owner.organization }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <a href="mailto:{{ animal.owner.email }}?subject=Interested in adopting {{ animal.name }} (WildNest)"
+                       class="btn wn-btn-primary w-100">
+                        <i class="bi bi-envelope me-2"></i>Email {{ animal.owner.name.split()[0] }}
+                    </a>
+                    <small class="text-muted d-block mt-2 text-center">{{ animal.owner.email }}</small>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- CARE + BACKGROUND -->
+        <div class="row g-4 mt-0">
+            <div class="col-lg-7">
+                <div class="wn-card p-4 mb-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-shield-check me-2 wn-green"></i>Care Notes</h6>
+                    <div class="wn-detail-block">
+                        <div class="wn-detail-label">⚠️ Stress Triggers</div>
+                        <div class="wn-detail-value">{{ animal.stress_triggers or 'None recorded.' }}</div>
+                    </div>
+                    <div class="wn-detail-block">
+                        <div class="wn-detail-label">Dietary Requirements</div>
+                        <div class="wn-detail-value">{{ animal.dietary_requirements or 'Not specified.' }}</div>
+                    </div>
+                </div>
+                <div class="wn-card p-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-geo-alt me-2 wn-green"></i>Background</h6>
+                    <div class="wn-detail-block">
+                        <div class="wn-detail-label">Origin</div>
+                        <div class="wn-detail-value">{{ 'Rescued' if animal.origin == 'rescue' else 'Personal pet' }}</div>
+                    </div>
+                    {% if animal.rescue_location %}
+                    <div class="wn-detail-block">
+                        <div class="wn-detail-label">Rescue Location</div>
+                        <div class="wn-detail-value">{{ animal.rescue_location }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="wn-detail-block">
+                        <div class="wn-detail-label">Story</div>
+                        <div class="wn-detail-value">{{ animal.rescue_reason or 'No background provided.' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <!-- MEDICAL HISTORY -->
+                <div class="wn-card p-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-file-earmark-medical me-2 wn-green"></i>Medical History</h6>
+                    {% if medical_records %}
+                    {% for r in medical_records[:6] %}
+                    <div class="wn-detail-block">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-semibold" style="font-size:0.88rem;">{{ r.title }}</span>
+                            <small class="text-muted">{{ r.record_date.strftime('%b %d, %Y') }}</small>
+                        </div>
+                        {% if r.notes %}<div class="text-muted" style="font-size:0.82rem;">{{ r.notes }}</div>{% endif %}
+                        {% if r.treatment %}<div class="text-muted" style="font-size:0.78rem;"><i class="bi bi-capsule me-1"></i>{{ r.treatment }}</div>{% endif %}
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted small mb-0">No medical records logged.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ENVIRONMENTAL CHARTS + LOG TABLE -->
+        {% if charts %}
+        <div class="mt-4">
+            <h5 class="fw-bold mb-3"><i class="bi bi-activity me-2 wn-green"></i>Living Data ({{ log_count }} logs)</h5>
+            <div class="row g-3">
+                {% for key in ['temp_humidity', 'weight', 'feeding', 'stress_activity'] %}
+                    {% if charts.get(key) %}
+                    <div class="col-lg-6">
+                        <div class="wn-card p-3">{{ charts[key]|safe }}</div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- LOG HISTORY TABLE -->
+            <div class="wn-card mt-4">
+                <div class="p-3 wn-card-header">
+                    <h6 class="mb-0 fw-bold">Recent Log Entries</h6>
+                </div>
+                <div class="table-responsive">
+                    <table class="table wn-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th><th>Temp</th><th>Humidity</th><th>Weight</th>
+                                <th>Feeding</th><th>Stress</th><th>Activity</th><th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in recent_logs %}
+                            <tr>
+                                <td class="text-muted" style="white-space:nowrap;">{{ log.timestamp.strftime('%b %d, %H:%M') }}</td>
+                                <td>{{ (log.temperature_f ~ '°F') if log.temperature_f is not none else '—' }}</td>
+                                <td>{{ (log.humidity_pct ~ '%') if log.humidity_pct is not none else '—' }}</td>
+                                <td>{{ (log.weight_g|int ~ 'g') if log.weight_g is not none else '—' }}</td>
+                                <td>{{ (log.feeding_amount_g|int ~ 'g') if log.feeding_amount_g is not none else '—' }}</td>
+                                <td>{{ log.stress_level if log.stress_level is not none else '—' }}</td>
+                                <td>{{ log.activity_level if log.activity_level is not none else '—' }}</td>
+                                <td class="text-muted" style="max-width:180px;">{{ log.notes or '—' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}
