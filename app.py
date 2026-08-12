@@ -96,9 +96,28 @@ def create_app():
     # instead of guessing http:// from the internal request.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'wildnest-dev-key')
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wildnest.db'
+
+    # Render (and most hosts) inject DATABASE_URL for their managed Postgres addon.
+    # Falls back to local SQLite when unset, so local dev needs no Postgres install.
+    database_url = os.getenv('DATABASE_URL', 'sqlite:///wildnest.db')
+    if database_url.startswith('postgres://'):
+        # SQLAlchemy 1.4+ dropped support for the old 'postgres://' scheme Render
+        # (and Heroku before it) still hands out — rewrite it to 'postgresql://'.
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['MAX_CONTENT_LENGTH'] = 64 * 1024 * 1024  # allow short behaviour videos
+
+    if database_url.startswith('postgresql://'):
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            # verify a pooled connection is still alive before handing it to a
+            # request — cheap check that avoids "server closed the connection
+            # unexpectedly" errors after the DB drops an idle connection
+            'pool_pre_ping': True,
+            # recycle connections just under Render free-tier Postgres's idle
+            # timeout so we never hand out one that's about to be dropped
+            'pool_recycle': 280,
+        }
 
     os.makedirs('static/uploads', exist_ok=True)
     os.makedirs('rag/documents', exist_ok=True)
