@@ -1,8 +1,9 @@
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, url_for, request, jsonify, flash
 from werkzeug.middleware.proxy_fix import ProxyFix
 from extensions import db, login_manager
 from dotenv import load_dotenv
 from sqlalchemy import inspect, text
+from sqlalchemy.exc import SQLAlchemyError
 import os
 import threading
 
@@ -140,6 +141,19 @@ def create_app():
     @app.route('/')
     def index():
         return redirect(url_for('auth.login'))
+
+    @app.errorhandler(SQLAlchemyError)
+    def handle_db_error(e):
+        """Last-resort safety net for any commit/query that fails without its own
+        try/except (a dropped hosted-DB connection, an unexpected constraint hit,
+        etc.) — without this, a bare SQLAlchemyError bubbles up as a raw 500 page
+        and leaves the session in a state that can't be reused for the rest of the
+        request. Rolling back here always leaves the session usable again."""
+        db.session.rollback()
+        if request.path.startswith('/wildsight/') or request.is_json:
+            return jsonify({'error': 'A database error occurred. Please try again.'}), 500
+        flash('Something went wrong saving that — please try again.', 'danger')
+        return redirect(request.referrer or url_for('main.dashboard'))
 
     @app.context_processor
     def inject_notifications():

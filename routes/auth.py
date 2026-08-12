@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from extensions import db
 from models import User
+from sqlalchemy.exc import IntegrityError
 
 auth = Blueprint('auth', __name__)
 
@@ -58,7 +59,15 @@ def register():
         user = User(name=name, email=email, role='member', organization=organization)
         user.set_password(password)
         db.session.add(user)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            # the email-uniqueness check above passed, but another request for
+            # the same email (double-click, two tabs) committed in between —
+            # the unique constraint on users.email is what actually catches it
+            db.session.rollback()
+            flash('An account with this email already exists.', 'danger')
+            return render_template('register.html')
 
         login_user(user)
         flash(f'Welcome to WildNest, {name}!', 'success')
