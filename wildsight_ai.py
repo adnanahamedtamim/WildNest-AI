@@ -13,8 +13,6 @@ import base64
 import statistics
 from datetime import datetime
 
-import rag
-
 TEXT_MODEL = 'llama-3.3-70b-versatile'
 VISION_MODEL = 'qwen/qwen3.6-27b'
 
@@ -127,6 +125,7 @@ def build_system_context(animal, query=''):
     # RAG: supplementary species reference — SECONDARY to the pet's own data above,
     # used only to fill gaps or add general context, and always citable when used
     rag_block = ""
+    import rag
     rag_chunks = rag.retrieve(a.species, query, k=4)
     if rag_chunks:
         formatted = '\n\n'.join(
