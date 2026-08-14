@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WildNest — 6-Minute Demo Video Script</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+            color: #2c2c2a;
+            background: #fafaf9;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 3rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: #0b0b0b;
+        }
+        .subtitle {
+            font-size: 0.95rem;
+            color: #52514e;
+            margin-bottom: 2rem;
+        }
+        .meta {
+            background: #f5f5f4;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+            line-height: 1.8;
+        }
+        .meta strong { color: #0b0b0b; }
+        hr { border: none; border-top: 1px solid #e1e0d9; margin: 2rem 0; }
+        h2 {
+            font-size: 1.5rem;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+            color: #0b0b0b;
+        }
+        h3 {
+            font-size: 1.1rem;
+            margin-top: 1.8rem;
+            margin-bottom: 0.8rem;
+            color: #0b0b0b;
+        }
+        .scene-header {
+            background: #f5f5f4;
+            padding: 1rem;
+            border-left: 4px solid #2a78d6;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+        }
+        .action, .say {
+            margin-bottom: 1rem;
+        }
+        .action strong, .say strong { color: #0b0b0b; }
+        blockquote {
+            border-left: 3px solid #e1e0d9;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            font-style: italic;
+            color: #52514e;
+        }
+        .timing {
+            font-size: 0.85rem;
+            color: #898781;
+            margin-top: 0.5rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 0.9rem;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e1e0d9;
+        }
+        th {
+            background: #f5f5f4;
+            font-weight: 600;
+            color: #0b0b0b;
+        }
+        .checklist {
+            list-style: none;
+            margin: 1rem 0;
+        }
+        .checklist li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        .checklist li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #0ca30c;
+            font-weight: bold;
+        }
+        .tip-box {
+            background: #ecf7ff;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+            border-left: 4px solid #2a78d6;
+        }
+        .tip-box strong { color: #2a78d6; }
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; padding: 0; }
+            h1 { page-break-after: avoid; }
+            h2 { page-break-after: avoid; }
+            .scene-header { page-break-after: avoid; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+<h1>🎬 WildNest — Demo Video Script</h1>
+<p class="subtitle">A 6-minute guide to recording your hackathon submission</p>
+
+<div class="meta">
+<strong>Target runtime:</strong> ~5:30 – 6:00 (aim for under 6 minutes; don't rush)<br>
+<strong>Star:</strong> Milo — a 1-year-old Golden Retriever rescued in Dhaka on June 2, 2026<br>
+<strong>Speaking pace:</strong> ~140 words/minute — clear, warm, unhurried<br>
+<strong>Recording tool:</strong> OBS Studio at 1920×1080, 30fps
+</div>
+
+<h2>Before you hit record</h2>
+<ol style="margin-left: 1.5rem; line-height: 2;">
+<li>Start the app: <code>./venv/Scripts/python.exe app.py</code></li>
+<li>Open browser at <code>http://127.0.0.1:5000</code> — full screen, zoom to 110%</li>
+<li>Have a <strong>dog photo</strong> ready on your Desktop for the WildSight scan</li>
+<li>Log in ONCE as <code>maya.rescue@gmail.com</code> / <code>demo1234</code>, send one test chat message to warm up the embedding model. Then log out.</li>
+<li><strong>Do not save any `.py` files after this point</strong> — Flask's debug reloader restarts the server on each save, bringing back the 20-40s AI delay</li>
+<li>Do one full practice run WITHOUT recording</li>
+<li>Close all other tabs, silence notifications, close Discord/Slack</li>
+</ol>
+
+<hr>
+
+<h2>Scenes</h2>
+
+<div class="scene-header">
+<h3>SCENE 1 — Hook & Problem</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~25 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Open the <strong>login page</strong>. Do NOT log in yet. Let the animated paws drift. Camera stays still.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>Every year, millions of animals — dogs, cats, tortoises, parrots, reptiles — pass through rescue centers. And most of their journey lives on paper. Lost logbooks. Missed vaccinations. Mismatched adoptions. Forgotten medical history. WildNest fixes that. One AI-powered platform that follows every rescued animal from intake, through recovery, to the right forever home.</blockquote>
+<div class="timing">~46 words</div>
+</div>
+
+<hr>
+
+<div class="scene-header">
+<h3>SCENE 2 — Login & Dashboard</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~30 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Type <code>maya.rescue@gmail.com</code>, password, click Log in. Dashboard loads. Scroll down to reveal charts. Hover over one data point. Scroll back up.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>This is Maya. She runs a small rescue in Dhaka. When she logs in, she sees every animal in her care — the ones she's rescued, the ones she's still tending, the ones ready for adoption — all in one place. Beside each name is a live snapshot of that animal's health, drawn from real daily logs. And today, we're following just one of them. Meet Milo.</blockquote>
+<div class="timing">~55 words</div>
+</div>
+
+<hr>
+
+<div class="scene-header">
+<h3>SCENE 3 — Milo's Profile & Environmental Logs</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~40 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Click Milo's card. Profile opens. Scroll down slowly through stress triggers, dietary requirements, and six environmental charts. Pause on feeding and weight charts. Scroll back up.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>This is the animal profile page — the heart of WildNest. At the top: full identity — photo, species, breed, age, sex, and origin, whether rescued or personal. Below that: the rescue record — where the animal came from, when, and why. Then the care baseline — known stress triggers, dietary requirements, medical background. And down here: six live charts, one for each tracked dimension — temperature, humidity, feeding, weight, stress, and activity — every entry timestamped, plotted, and fully interactive. From this one page, Maya can log a new observation, run an AI health scan, generate a meal plan, open the passport, or start a chat. Milo's entire life, in one screen.</blockquote>
+<div class="timing">~110 words</div>
+</div>
+
+<hr>
+
+<div class="scene-header">
+<h3>SCENE 4 — Environmental Logging</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~20 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Click <strong>Log Environment</strong>. Hover through the form fields. Do NOT submit. Click back.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>Logging takes seconds. Maya enters today's temperature, feeding, weight, activity level — and she can even attach a photo or a short video of any unusual behavior. Every entry is validated at the database level, so bad data can never sneak in. And every entry becomes fuel for the AI systems we're about to see.</blockquote>
+<div class="timing">~61 words</div>
+</div>
+
+<hr>
+
+<div class="scene-header">
+<h3>SCENE 5 — Medical History & Vaccination Alerts</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~30 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Click <strong>Medical History</strong>. Show Milo's vaccination and head injury records. Point at the <strong>red overdue vaccination alert</strong>. Scroll to show both records with dates and vet names.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>Beyond daily logs, Milo has a complete medical timeline. Every visit, every treatment, every vet — recorded here. And WildNest tracks vaccination cycles automatically. See this red alert? Milo's rabies vaccine is overdue — WildNest flagged it, put an emergency notification on Maya's dashboard, so she can never forget. No missed doses. No slipped-through-the-cracks care.</blockquote>
+<div class="timing">~64 words</div>
+</div>
+
+<hr>
+
+<div class="scene-header">
+<h3>SCENE 6 — WildSight AI Health Analysis</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~35 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Click <strong>WildSight AI</strong>. Upload your dog photo. Wait 3-6 seconds. Scroll through the severity badge and findings.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>This is WildSight — Milo's personal AI health analyst. It knows Milo. It's studied every log Maya has recorded, his medical history, his stress triggers, his weight trend. So when Maya uploads a photo, WildSight doesn't guess like a generic scanner would — it interprets what it sees through everything it already knows about Milo, and gives back a clear severity tier: normal, watch, contact staff, or emergency. Fifteen seconds. And Maya has a second opinion whenever she needs one.</blockquote>
+<div class="timing">~78 words</div>
+</div>
+
+<hr>
+
+<div class="scene-header">
+<h3>SCENE 7 — AI Chat with Milo's Assistant</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~35 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Click <strong>Chat</strong>. Type: <code>Milo has been very restless during thunderstorms. What can I do to help him?</code> Wait for response. Scroll to reveal the <strong>cited source</strong>.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>And Maya can talk to Milo's AI directly. Any question, any time — from thunderstorm anxiety to feeding routines to whether a symptom needs a vet. It's a real conversation, not a search bar. And watch this — when the answer draws on published care references, it cites the exact source. So Maya isn't guessing which advice on the internet to trust. She has a species specialist on speed dial, and it shows its work.</blockquote>
+<div class="timing">~72 words</div>
+</div>
+
+<hr>
+
+<div class="scene-header">
+<h3>SCENE 8 — Weather-Aware Meal Plan</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~25 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Click <strong>Meal Plan</strong>. Point at the <strong>weather summary</strong> at the top. Then point at the meal suggestions.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>Milo needs to eat differently on a hot Dhaka afternoon than on a mild morning. So WildNest checks the real weather at his location — live — and generates today's meal plan around it. Breakfast, lunch, dinner, and care tips. Personalized to Milo, tuned to the weather outside his window, refreshed every single day.</blockquote>
+<div class="timing">~63 words</div>
+</div>
+
+<hr>
+
+<div class="scene-header">
+<h3>SCENE 9 — QR Passport</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~25 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Click <strong>Passport</strong>. Point at the QR code. Optionally scan it with your phone to show it works.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>If Maya ever hands Milo off — to a vet, another shelter, an adopter — she just shows this. Milo's passport. A single QR code. Anyone can scan it, and instantly see who he is, his medical history, and how to care for him. No login. No app install. Just a secure link that works from any phone camera in the world.</blockquote>
+<div class="timing">~67 words</div>
+</div>
+
+<hr>
+
+<div class="scene-header">
+<h3>SCENE 10 — Notifications</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~20 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Click the <strong>bell icon</strong>. Show the notification dropdown. Point at emergency badges. Click one to open it fully.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>Everything WildNest learns about Maya's animals flows into one notification stream. Overdue vaccines flag red as emergencies. Daily updates about newly adopted pets arrive automatically. Nothing about her animals slips through the cracks — because Maya can't be everywhere, but WildNest is.</blockquote>
+<div class="timing">~55 words</div>
+</div>
+
+<hr>
+
+<div class="scene-header">
+<h3>SCENE 11 — Rehoming Feed</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~25 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Click <strong>Feed</strong>. Browse page loads. Scroll through the listed animals. Show the species filter.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>When an animal is ready for a permanent home, it moves to the rehoming feed. Any adopter, anywhere, can browse the animals waiting — filter by species, read their stories, see their real health data. Every listing is transparent — the same environmental charts and medical history that Maya sees are visible to any potential adopter.</blockquote>
+<div class="timing">~62 words</div>
+</div>
+
+<hr>
+
+<div class="scene-header">
+<h3>SCENE 12 — AI-Powered Adopter Matching</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~35 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Click <strong>Find My Match</strong>. Fill in:<br>
+• Experience: Intermediate<br>
+• Space: Apartment with a dedicated pet room<br>
+• Species: Open to any<br>
+• Time: 2-3 hours/day<br>
+• Location: Dhaka, Bangladesh<br>
+Click <strong>Get Matches</strong>. Show results and compatibility scores.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>But browsing isn't matching. So WildNest goes further. An adopter tells us about themselves — their experience, their living space, their climate, their available time. And WildNest scores every listed animal for compatibility, with a written reason for every single score. Why this tortoise fits. Why this iguana doesn't. So adopters don't just find a pet. They find the right pet — and animals go to homes where they'll actually thrive.</blockquote>
+<div class="timing">~73 words</div>
+</div>
+
+<hr>
+
+<div class="scene-header">
+<h3>SCENE 13 — Handover & Transition Notifications</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~30 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Navigate to a transferred animal (picu2 or Kilo). Show the handover certificate with unique ID. Click the bell icon. Show a "It's my Xth day with you" transition notification.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>And when a match becomes an adoption, WildNest generates a formal handover certificate — a unique ID, digitally transferring ownership, with a printable record for both sides. But the story doesn't end there. For the first thirty days in the new home, the adopter receives daily notes — written by WildNest, in the animal's own voice — sharing how it's settling in, what it misses from before, what it needs today. Because a rescue isn't complete when the adoption is signed. It's complete when the animal feels at home.</blockquote>
+<div class="timing">~86 words</div>
+</div>
+
+<hr>
+
+<div class="scene-header">
+<h3>SCENE 14 — Closing</h3>
+<div style="font-size: 0.9rem; color: #52514e;">~10 seconds</div>
+</div>
+
+<div class="action">
+<strong>🖱 ACTION:</strong> Click WildNest logo. Return to dashboard. Let paws animate. Fade to black.
+</div>
+
+<div class="say">
+<strong>🎙 SAY:</strong>
+<blockquote>WildNest. From rescue, to recovery, to rehome. Every animal — every story — remembered.</blockquote>
+<div class="timing">~23 words</div>
+</div>
+
+<hr>
+
+<h2>Delivery Checklist</h2>
+<ul class="checklist">
+<li><strong>Breathe between scenes</strong> — a half-second pause reads as confidence</li>
+<li><strong>Never say "um"</strong> — if you flub, restart the SCENE</li>
+<li><strong>Cursor intentional</strong> — no aimless mouse-wandering</li>
+<li><strong>Wait for AI responses</strong> — don't narrate a blank screen</li>
+<li><strong>Say Milo's name warmly</strong> — you're telling his story</li>
+<li><strong>Record separately if needed</strong> — Audacity for narration, layer in DaVinci Resolve</li>
+<li><strong>Add captions</strong> — helps judges watching muted</li>
+</ul>
+
+<div class="tip-box">
+<strong>💡 To print this as PDF:</strong> Press Ctrl+P (or Cmd+P on Mac), select "Save as PDF", and click Save. This becomes your on-set teleprompter.
+</div>
+
+<hr>
+
+<p style="text-align: center; margin-top: 3rem; font-size: 0.9rem; color: #898781;">
+Good luck. Milo's story is worth telling well.
+</p>
+
+</div>
+
+</body>
+</html>
