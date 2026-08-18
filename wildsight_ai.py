@@ -210,24 +210,28 @@ def get_chat_reply(animal, history, user_message, image_path=None):
         return f"⚠️ WildNest hit an error talking to the AI: {e}"
 
 
-def generate_todays_meal_plan(animal):
+def generate_todays_meal_plan(animal, weather=None):
     """Generate a species-appropriate meal plan for today based on weather."""
     if not is_configured():
-        return None, "❌ AI is not configured. Set TOGETHER_API_KEY in .env."
+        return None
 
     try:
-        import requests
-        weather = requests.get(
-            'https://api.open-meteo.com/v1/forecast',
-            params={
-                'latitude': animal.location_latitude or 40.7128,
-                'longitude': animal.location_longitude or -74.0060,
-                'current': 'temperature_2m,relative_humidity_2m'
-            },
-            timeout=5
-        ).json()
-        temp = weather['current']['temperature_2m']
-        humidity = weather['current']['relative_humidity_2m']
+        if weather and weather.get('temperature') is not None:
+            temp = weather['temperature']
+            humidity = weather.get('humidity', 50)
+        else:
+            import requests
+            resp = requests.get(
+                'https://api.open-meteo.com/v1/forecast',
+                params={
+                    'latitude': animal.location_latitude or 40.7128,
+                    'longitude': animal.location_longitude or -74.0060,
+                    'current': 'temperature_2m,relative_humidity_2m'
+                },
+                timeout=5
+            ).json()
+            temp = resp['current']['temperature_2m']
+            humidity = resp['current']['relative_humidity_2m']
     except Exception:
         temp, humidity = 72, 50
 
