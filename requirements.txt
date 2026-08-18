@@ -3,12 +3,12 @@ flask-login
 flask-sqlalchemy
 python-dotenv
 plotly
-google-generativeai
 chromadb
 sentence-transformers
-groq
 pillow
 qrcode
 werkzeug
 gunicorn
 psycopg2-binary
+openai
+requests
