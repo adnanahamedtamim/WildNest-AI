@@ -1,10 +1,13 @@
-"""WildNest AI — per-pet chat assistant powered by Together AI.
+"""WildNest AI — per-pet chat assistant powered by Groq (OpenAI-compatible API).
 
 The model is given the specific animal's full profile + a summary of its
 environmental analytics as context, so answers are personalised to THAT animal.
 It also draws on the model's general knowledge of animal care, supplemented by a
 local RAG layer (rag.py) that retrieves and cites species care references —
 strictly secondary to the pet's own real, logged data (see build_system_context).
+
+Text is handled by openai/gpt-oss-120b; photo (vision) health checks by
+qwen/qwen3.6-27b. Both are served through Groq's free OpenAI-compatible endpoint.
 """
 import os
 import re
@@ -15,16 +18,21 @@ from datetime import datetime
 
 import rag
 
-TEXT_MODEL = 'meta-llama/Meta-Llama-3-8B-Instruct-Turbo'
-VISION_MODEL = 'meta-llama/Meta-Llama-3-8B-Instruct-Turbo'
+TEXT_MODEL = 'openai/gpt-oss-120b'
+VISION_MODEL = 'qwen/qwen3.6-27b'
+BASE_URL = 'https://api.groq.com/openai/v1'
 
-# ---- lazy Together AI client -------------------------------------------------------
+# ---- lazy client -----------------------------------------------------------
 
 _client = None
 
+# reasoning models (qwen) wrap their chain-of-thought in <think>…</think>; we
+# strip any that leaks through so the caretaker never sees raw model thinking
+_THINK_RE = re.compile(r'<think>.*?</think>', re.DOTALL)
+
 
 def _get_api_key():
-    return os.getenv('TOGETHER_API_KEY', '').strip()
+    return os.getenv('GROQ_API_KEY', '').strip()
 
 
 def is_configured():
@@ -36,11 +44,45 @@ def _get_client():
     global _client
     if _client is None:
         from openai import OpenAI
-        _client = OpenAI(
-            api_key=_get_api_key(),
-            base_url="https://api.together.xyz/v1"
-        )
+        _client = OpenAI(api_key=_get_api_key(), base_url=BASE_URL)
     return _client
+
+
+def _strip(text):
+    return _THINK_RE.sub('', text or '').strip()
+
+
+def _complete(system_instruction, messages, model=None, max_tokens=1024,
+              temperature=0.7, vision=False):
+    """One chat completion. `messages` are OpenAI-format dicts (chronological).
+    Returns cleaned text, or raises on API error (callers handle exceptions)."""
+    client = _get_client()
+    full = []
+    if system_instruction:
+        full.append({'role': 'system', 'content': system_instruction})
+    full.extend(messages)
+    kwargs = dict(model=model or TEXT_MODEL, messages=full,
+                  max_tokens=max_tokens, temperature=temperature)
+    if vision:
+        # server-side suppression of qwen's chain-of-thought (regex is the backup)
+        kwargs['extra_body'] = {'reasoning_format': 'hidden'}
+    resp = client.chat.completions.create(**kwargs)
+    return _strip(resp.choices[0].message.content)
+
+
+def _friendly_error(e):
+    """Turn an API exception into a warm, WildNest-branded message for the caretaker."""
+    msg = str(e)
+    low = msg.lower()
+    if ('quota' in low or 'rate limit' in low or 'rate_limit' in low
+            or 'resourceexhausted' in low or '429' in msg):
+        return ("😴 WildNest AI is taking a short breather — it's hit the free "
+                "usage limit for now. Please try again in a little while.")
+    if ('401' in msg or 'unauthor' in low or 'invalid_api_key' in low
+            or 'api key' in low or 'permission' in low):
+        return ("⚠️ WildNest couldn't authenticate with the AI. Please check that "
+                "your GROQ_API_KEY in .env is a valid key from console.groq.com.")
+    return f"⚠️ WildNest hit an error talking to the AI: {msg}"
 
 
 # ---- context building ------------------------------------------------------
@@ -93,7 +135,7 @@ def build_medical_summary(records):
     if not records:
         return 'No medical records logged yet.'
     lines = []
-    for r in records[:8]:
+    for r in records[:8]:  # most recent first, cap to keep the prompt lean
         line = f"{r.record_date.strftime('%b %d, %Y')} — {r.title}"
         if r.vet_name:
             line += f" (seen by {r.vet_name})"
@@ -127,8 +169,9 @@ def build_system_context(animal, query=''):
             f"{a.meal_plan_content}"
         )
 
+    # RAG: supplementary species reference — SECONDARY to the pet's own data above,
+    # used only to fill gaps or add general context, and always citable when used
     rag_block = ""
-    import rag
     rag_chunks = rag.retrieve(a.species, query, k=4)
     if rag_chunks:
         formatted = '\n\n'.join(
@@ -138,177 +181,336 @@ def build_system_context(animal, query=''):
 === SUPPLEMENTARY SPECIES REFERENCE (secondary source — see rules below) ===
 {formatted}"""
 
-    return f"""You are WildNest, a warm, knowledgeable assistant that helps caretakers provide expert animal care.
+    return f"""You are WildNest, a warm, knowledgeable assistant that helps caretakers
+look after their specific rescued or exotic pet. You are speaking with the
+current caretaker of the pet described below.
+Refer to it as "your pet" or by its name — never call it "the animal".
 
-=== ANIMAL PROFILE ===
-Species: {a.species}
+=== THIS PET'S PROFILE (mandatory — always ground your answer in this) ===
 Name: {a.name}
+Species: {a.species}{(' (' + a.common_name + ')') if a.common_name else ''}
 Age: {_fmt(a.age_years, ' years')}
-Weight: {_fmt(a.weight_g, 'g')}
-Health status: {a.health_status or 'not specified'}
+Sex: {_fmt(a.sex)}
+Origin: {a.origin} ({'currently listed for rehoming' if a.status == 'listed' else 'in care' if a.status == 'in_care' else a.status.replace('_', ' ')})
+Current location: {_fmt(a.current_location)}
+Rescue date: {a.rescue_date.strftime('%B %d, %Y') if a.rescue_date else 'not recorded'}
+Rescue location: {_fmt(a.rescue_location)}
+Known stress triggers: {_fmt(a.stress_triggers)}
+Dietary requirements: {_fmt(a.dietary_requirements)}
+Background: {_fmt(a.rescue_reason)}
 {handover_line}
 
-=== MEDICAL HISTORY ===
+=== THIS PET'S MEDICAL HISTORY (mandatory, most recent first) ===
 {medical}
 
-=== ENVIRONMENTAL ANALYTICS ===
+=== THIS PET'S LOGGED ANALYTICS — temperature, humidity, weight, feeding, stress, activity (mandatory) ===
 {analytics}
-
 {meal_plan_block}
-
 {rag_block}
 
-=== YOUR ROLE ===
-1. **Answer grounded in this animal's data first.** Always use this animal's logged records (medical
-   history, weight trends, environmental logs, caretaker notes) as the primary foundation for advice.
-2. **Draw on general knowledge second.** Only supplement with general animal-care knowledge when
-   the specific data doesn't directly answer the question.
-3. **Cite your sources.** When referencing supplementary species information, cite the source in square
-   brackets [like this]. Never make up citations.
-4. **Be warm but precise.** This is a caretaker who trusts you with a living animal — be empathetic
-   and encouraging, but never guess or hedge critical medical advice. If uncertain, say so.
-5. **Respect the meal plan.** If a meal plan has already been generated today, refer back to it rather
-   than contradicting or repeating it.
+=== HOW TO RESPOND ===
+- MANDATORY: always ground your answer first in THIS pet's own profile, medical
+  history, and logged analytics above — especially its actual temperature,
+  humidity, weight, feeding, and behaviour data. Never skip or ignore this,
+  even when reference material is also available below.
+- The supplementary species reference above (if present) is SECONDARY: use it
+  only to add general species knowledge or fill in gaps this pet's own records
+  don't cover. It must NEVER override, contradict, or take priority over this
+  pet's own real, logged data — if the two ever conflict, this pet's own data
+  always wins.
+- If you draw a specific fact from the supplementary reference, briefly cite it
+  in parentheses, e.g. (Source: Sulcata Tortoise Care Reference). Don't cite
+  anything you didn't actually use from it.
+- Be concise, friendly, and practical. Use short paragraphs or bullet points.
+- If something suggests a possible health emergency, clearly advise contacting a
+  veterinarian — you assist, you do not replace professional veterinary care.
+- If data is missing, say so and suggest what the caretaker could start logging."""
 
-Answer the caretaker's question in 2–3 sentences, then elaborate if needed."""
 
+# ---- chat ------------------------------------------------------------------
 
 def get_chat_reply(animal, history, user_message, image_path=None):
-    """Get a personalised AI reply for this specific animal, optionally analysing a photo."""
+    """history: list of {'role': 'user'|'assistant', 'content': str} (chronological).
+    image_path: optional absolute path to a photo the caretaker just uploaded —
+    when present, the model is asked to look for signs of injury/illness/abnormal
+    behaviour in the photo, in light of this animal's known baseline.
+    Returns the assistant's reply text (or a friendly fallback message)."""
     if not is_configured():
-        return "❌ AI is not configured. Set TOGETHER_API_KEY in .env."
+        return ("⚙️ WildNest AI isn't connected yet. Add your free Groq API key to "
+                "the .env file (GROQ_API_KEY=...) and restart the app to start "
+                "chatting about this pet.")
 
-    system_prompt = build_system_context(animal, user_message)
-
-    messages = [{'role': m['role'], 'content': m['content']} for m in history]
-
-    if image_path:
-        with open(image_path, 'rb') as f:
-            image_data = base64.b64encode(f.read()).decode('utf-8')
-        messages.append({
-            'role': 'user',
-            'content': [
-                {'type': 'text', 'text': user_message},
-                {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{image_data}'}}
-            ]
-        })
-    else:
-        messages.append({'role': 'user', 'content': user_message})
+    system_instruction = build_system_context(animal, query=user_message)
+    messages = [
+        {'role': m['role'], 'content': m['content']}
+        for m in history
+        if m.get('role') in ('user', 'assistant') and m.get('content')
+    ]
 
     try:
-        client = _get_client()
-        response = client.chat.completions.create(
-            model=VISION_MODEL if image_path else TEXT_MODEL,
-            messages=[{'role': 'system', 'content': system_prompt}] + messages,
-            max_tokens=1024,
-            temperature=0.7
+        if image_path:
+            try:
+                with open(image_path, 'rb') as f:
+                    b64 = base64.b64encode(f.read()).decode('utf-8')
+            except Exception:
+                b64 = None
+
+            if b64:
+                instruction = (
+                    f"The caretaker uploaded a photo of {animal.name} along with this "
+                    f"message: \"{user_message}\"\n\nCarefully look at the photo for any "
+                    f"visible signs of injury, illness, abnormal posture, skin/coat/scale "
+                    f"condition, or distress — comparing against {animal.name}'s known "
+                    f"baseline and stress triggers above. Clearly state whether anything "
+                    f"looks concerning, and what the caretaker should do next (including "
+                    f"when to contact a vet).")
+                messages.append({
+                    'role': 'user',
+                    'content': [
+                        {'type': 'text', 'text': instruction},
+                        {'type': 'image_url',
+                         'image_url': {'url': f'data:image/jpeg;base64,{b64}'}},
+                    ],
+                })
+                return _complete(system_instruction, messages, model=VISION_MODEL,
+                                 max_tokens=1024, vision=True)
+            # image unreadable — fall through to text-only
+        messages.append({'role': 'user', 'content': user_message})
+        return _complete(system_instruction, messages, model=TEXT_MODEL, max_tokens=1024)
+    except Exception as e:  # noqa: BLE001
+        return _friendly_error(e)
+
+
+def generate_todays_meal_plan(animal, weather):
+    """Generate breakfast/lunch/dinner + care suggestions for TODAY, factoring in
+    real current weather (temp/humidity) at the pet's location plus its own history.
+    weather: dict from weather.get_current_weather(), or None if unavailable.
+    Returns a markdown string (a friendly message string on error)."""
+    if not is_configured():
+        return "⚙️ WildNest AI isn't connected yet. Add your GROQ_API_KEY to .env and restart."
+
+    system_instruction = build_system_context(
+        animal, query='daily meal plan, feeding amounts, diet, temperature and humidity care')
+
+    if weather:
+        weather_block = (
+            f"VERIFIED CURRENT WEATHER (from a live weather API — treat these as exact, "
+            f"authoritative facts, do not estimate or override them):\n"
+            f"Location: {weather['place_name']}\n"
+            f"Local observation time: {weather['observed_at']} ({weather['timezone']})\n"
+            f"Temperature: {weather['temp_f']}°F ({weather['temp_c']}°C)\n"
+            f"Humidity: {weather['humidity_pct']}%\n"
+            f"Conditions: {weather['description']}"
         )
-        reply = response.choices[0].message.content
-        reply = re.sub(r'<think>.*?</think>', '', reply, flags=re.DOTALL)
-        return reply
-    except Exception as e:
-        return f"⚠️ WildNest hit an error talking to the AI: {e}"
+    else:
+        weather_block = ("Current weather is unavailable (no Current Location set for this pet, "
+                         "or the lookup failed) — base suggestions on the pet's history only, "
+                         "and do not invent or guess a temperature/humidity.")
+
+    prompt = f"""{weather_block}
+
+Generate TODAY's plan for {animal.name} based on the weather data above and everything
+you know about {animal.name} above. Respond in this exact structure using short markdown:
+
+## 🍳 Breakfast
+One short suggestion (what/how much), then *in italics* a one-line reason tied to
+today's weather and/or {animal.name}'s history.
+
+## 🍽️ Lunch
+Same format.
+
+## 🌙 Dinner
+Same format.
+
+## 💧 Today's Care Tips
+2-3 short bullet points (e.g. hydration frequency, shade/cooling or warming, activity
+level, misting/showering if relevant to the species) — each with a brief *reason in
+italics* that names the actual temperature and/or humidity number given above.
+
+Keep it tight — this is a quick daily glance, not an essay. When you reference the
+weather, quote the exact numbers given above (e.g. "87°F", "78% humidity") — never
+approximate, round significantly, or make up different numbers."""
+
+    try:
+        return _complete(system_instruction, [{'role': 'user', 'content': prompt}],
+                         model=TEXT_MODEL, max_tokens=1024)
+    except Exception as e:  # noqa: BLE001
+        return _friendly_error(e)
 
 
-def generate_todays_meal_plan(animal, weather=None):
-    """Generate a species-appropriate meal plan for today based on weather."""
+# ---- pet matching ----------------------------------------------------------
+
+def _pet_catalog_line(p):
+    """Compact one-line summary of a pet for the matching prompt."""
+    logs = list(p.env_logs)
+    temps = [l.temperature_f for l in logs if l.temperature_f is not None]
+    hums = [l.humidity_pct for l in logs if l.humidity_pct is not None]
+    weights = [l.weight_g for l in logs if l.weight_g is not None]
+    avg_temp = round(statistics.mean(temps), 1) if temps else None
+    avg_hum = round(statistics.mean(hums), 1) if hums else None
+    medical = '; '.join(r.title for r in list(p.medical_records)[:3]) or 'none'
+    return (
+        f"ID {p.id}: {p.name}, species {p.species}"
+        f"{(' (' + p.common_name + ')') if p.common_name else ''}, "
+        f"age {p.age_years if p.age_years is not None else 'unknown'}, "
+        f"origin {p.origin}, location {p.current_location or 'unspecified'}. "
+        f"Stress triggers: {p.stress_triggers or 'none noted'}. "
+        f"Diet: {p.dietary_requirements or 'unspecified'}. "
+        f"Baseline temp {avg_temp if avg_temp is not None else '?'}F, "
+        f"humidity {avg_hum if avg_hum is not None else '?'}%. "
+        f"Current weight {(str(int(weights[-1])) + 'g') if weights else 'unknown'}. "
+        f"Medical history: {medical}."
+    )
+
+
+def _extract_json_array(text):
+    """Pull the first JSON array out of a model response (tolerates markdown fences)."""
+    text = (text or '').strip()
+    text = re.sub(r'^```(?:json)?', '', text).strip()
+    text = re.sub(r'```$', '', text).strip()
+    try:
+        return json.loads(text)
+    except Exception:
+        m = re.search(r'\[.*\]', text, re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group(0))
+            except Exception:
+                return None
+    return None
+
+
+def match_pets(requirements_text, pets):
+    """Score every pet against the adopter's requirements in ONE call.
+    Returns a list of {animal, score, reason} sorted by score desc, or None on failure."""
+    if not pets:
+        return []
     if not is_configured():
         return None
 
+    catalog = '\n'.join(_pet_catalog_line(p) for p in pets)
+    prompt = f"""You are matching an adopter with rescued/exotic pets available for rehoming.
+
+=== ADOPTER'S REQUIREMENTS ===
+{requirements_text}
+
+=== AVAILABLE PETS ===
+{catalog}
+
+For EACH pet, rate from 0 to 100 how well it fits this adopter, weighing:
+- species preference, care difficulty vs the adopter's experience,
+- climate/enclosure needs (temperature, humidity) vs what they can provide,
+- daily time commitment, space, and any health considerations,
+- location proximity if relevant.
+
+Respond with ONLY a JSON array (no markdown, no extra text), one object per pet:
+[{{"id": <pet id>, "score": <0-100 integer>, "reason": "<one short sentence why>"}}]"""
+
+    by_id = {p.id: p for p in pets}
     try:
-        if weather and weather.get('temperature') is not None:
-            temp = weather['temperature']
-            humidity = weather.get('humidity', 50)
-        else:
-            import requests
-            resp = requests.get(
-                'https://api.open-meteo.com/v1/forecast',
-                params={
-                    'latitude': animal.location_latitude or 40.7128,
-                    'longitude': animal.location_longitude or -74.0060,
-                    'current': 'temperature_2m,relative_humidity_2m'
-                },
-                timeout=5
-            ).json()
-            temp = resp['current']['temperature_2m']
-            humidity = resp['current']['relative_humidity_2m']
-    except Exception:
-        temp, humidity = 72, 50
+        raw = _complete(None, [{'role': 'user', 'content': prompt}],
+                        model=TEXT_MODEL, max_tokens=1024)
+    except Exception:  # noqa: BLE001
+        return None
 
-    client = _get_client()
-    system = f"""You are a wildlife nutritionist. Generate a detailed, species-specific meal plan.
-Animal: {animal.species}, {_fmt(animal.age_years, ' years old')}, {_fmt(animal.weight_g, 'g')}
-Current weather: {temp}°F, {humidity}% humidity
-Include: portions, feeding times, hydration (adjust for heat/humidity), treat options.
-Format as a readable daily schedule."""
+    data = _extract_json_array(raw)
+    if data is None:
+        return None
 
-    try:
-        response = client.chat.completions.create(
-            model=TEXT_MODEL,
-            messages=[
-                {'role': 'system', 'content': system},
-                {'role': 'user', 'content': f'Generate today\'s meal plan for {animal.name} ({animal.species}).'}
-            ],
-            max_tokens=1024,
-            temperature=0.7
-        )
-        plan = response.choices[0].message.content
-        return plan, None
-    except Exception as e:
-        return None, f"⚠️ Meal plan generation failed: {e}"
+    results = []
+    for item in data:
+        pid = item.get('id')
+        if pid in by_id:
+            try:
+                score = max(0, min(100, int(item.get('score', 0))))
+            except (ValueError, TypeError):
+                score = 0
+            results.append({
+                'animal': by_id[pid],
+                'score': score,
+                'reason': str(item.get('reason', '')).strip(),
+            })
+    # include any pets the model skipped, at the bottom
+    scored_ids = {r['animal'].id for r in results}
+    for p in pets:
+        if p.id not in scored_ids:
+            results.append({'animal': p, 'score': 0, 'reason': 'Not enough data to score.'})
+    results.sort(key=lambda x: x['score'], reverse=True)
+    return results
 
 
-def match_pets(adopters):
-    """Score and rank adopters for each animal in the shelter based on compatibility."""
-    if not is_configured():
-        return {}, "❌ AI is not configured. Set TOGETHER_API_KEY in .env."
+# ---- transition-day notifications ("from the pet") ------------------------
 
-    try:
-        from models import Animal
-        animals = Animal.query.all()
-        matches = {}
+def _ordinal(n):
+    if 10 <= n % 100 <= 20:
+        suffix = 'th'
+    else:
+        suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+    return f'{n}{suffix}'
 
-        for animal in animals:
-            context = f"""Animal: {animal.name} ({animal.species}), age {_fmt(animal.age_years, ' years')},
-health status: {animal.health_status or 'good'}, medical history: {build_medical_summary(list(animal.medical_records))}"""
 
-            client = _get_client()
-            response = client.chat.completions.create(
-                model=TEXT_MODEL,
-                messages=[
-                    {'role': 'system', 'content': 'You are an animal adoption specialist. Score adopter compatibility (0-100) for this animal.'},
-                    {'role': 'user', 'content': f'{context}\n\nAdopters: {json.dumps(adopters)}\n\nRank by compatibility score.'}
-                ],
-                max_tokens=512,
-                temperature=0.7
-            )
-            matches[animal.id] = response.choices[0].message.content
-
-        return matches, None
-    except Exception as e:
-        return {}, f"⚠️ Matching failed: {e}"
+def _parse_title_body(text, fallback_title):
+    """Pull TITLE:/BODY: lines out of the model response; tolerant of formatting slips."""
+    title_match = re.search(r'TITLE:\s*(.+)', text)
+    body_match = re.search(r'BODY:\s*(.+)', text, re.DOTALL)
+    if title_match and body_match:
+        title = title_match.group(1).strip().strip('"')
+        body = body_match.group(1).strip()
+        return title, body
+    # fallback: first non-empty line is the title, rest is the body
+    lines = [l.strip() for l in text.strip().split('\n') if l.strip()]
+    if not lines:
+        return fallback_title, "I'm settling in — check on me when you can!"
+    return lines[0].strip('"'), ' '.join(lines[1:]) or "Just checking in today."
 
 
 def generate_transition_notification(animal, day_number):
-    """Generate a care milestone notification (e.g., 'Day 3 with {animal.name}')."""
+    """Write a short, first-person 'update from the pet' comparing its life before
+    and after this handover, with one concrete suggestion. Returns (title, body)."""
+    fallback_title = f"It's my {_ordinal(day_number)} day with you"
     if not is_configured():
         return None
 
+    logs = list(animal.env_logs)
+    handover = animal.handover_date
+    before = [l for l in logs if handover and l.timestamp < handover]
+    after = [l for l in logs if not handover or l.timestamp >= handover]
+
+    before_summary = build_analytics_summary(before)
+    after_summary = build_analytics_summary(after)
+
+    prompt = f"""You are {animal.name}, a {animal.species}, writing a short first-person
+daily note to your NEW caretaker, who took you in {day_number} day(s) ago. Use the data
+below to ground it in reality — comparing your life before this move to how you're doing
+now, if there's a notable difference worth mentioning. Speak as the animal — simple,
+warm, a little vulnerable, never melodramatic. Never invent facts not supported by the
+data below (species-appropriate food/play ideas from general knowledge are fine).
+
+=== MY LIFE BEFORE (previous home/carer) ===
+{before_summary}
+
+=== MY LIFE SINCE THE MOVE ({day_number} day(s) with you) ===
+{after_summary}
+
+=== MY KNOWN TRIGGERS & NEEDS ===
+Stress triggers: {_fmt(animal.stress_triggers)}
+Diet: {_fmt(animal.dietary_requirements)}
+
+Respond in EXACTLY this format, nothing else:
+TITLE: It's my {_ordinal(day_number)} day with you - <5-8 word warm continuation, e.g. "and I miss my old sunbathing spot">
+BODY: <one short, warm paragraph (3-4 sentences) in first person as {animal.name}, covering
+ALL of: (1) how I'm feeling today, tied to a real observation from the data if there is
+one, (2) what I'd like to do today, (3) what I'd like to eat today, (4) one simple way
+you could play with me today. Keep the whole thing brief and easy to read in one glance —
+no headers, no bullet points, just a natural flowing note.>"""
+
     try:
-        client = _get_client()
-        response = client.chat.completions.create(
-            model=TEXT_MODEL,
-            messages=[
-                {'role': 'system', 'content': 'You are a wildlife care coordinator. Generate a brief, warm milestone message (under 100 chars).'},
-                {'role': 'user', 'content': f'Animal: {animal.name} ({animal.species}). Day {day_number} milestone. Generate a short, encouraging title and body (2 sentences).'}
-            ],
-            max_tokens=200,
-            temperature=0.8
-        )
-        text = response.choices[0].message.content
-        lines = text.split('\n', 1)
-        title = lines[0][:80]
-        body = lines[1] if len(lines) > 1 else ''
-        return (title, body)
-    except Exception:
+        raw = _complete(None, [{'role': 'user', 'content': prompt}],
+                        model=TEXT_MODEL, max_tokens=512)
+    except Exception:  # noqa: BLE001
         return None
+
+    # any of these prefixes means an error/fallback message came back, not a real reply
+    if not raw or raw[0] in ('⚙', '⚠', '😴'):
+        return None
+    return _parse_title_body(raw, fallback_title)
