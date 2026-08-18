@@ -285,29 +285,26 @@ health status: {animal.health_status or 'good'}, medical history: {build_medical
         return {}, f"⚠️ Matching failed: {e}"
 
 
-def generate_transition_notification(animal, old_owner, new_owner):
-    """Generate a warm handover notification for the adopter."""
+def generate_transition_notification(animal, day_number):
+    """Generate a care milestone notification (e.g., 'Day 3 with {animal.name}')."""
     if not is_configured():
-        return None, "❌ AI is not configured. Set TOGETHER_API_KEY in .env."
+        return None
 
     try:
-        context = f"""Animal: {animal.name} ({animal.species})
-From: {old_owner.name if old_owner else 'Rescue'}
-To: {new_owner.name}
-Medical: {build_medical_summary(list(animal.medical_records))}
-Care notes: {animal.special_care_notes or 'None'}"""
-
         client = _get_client()
         response = client.chat.completions.create(
             model=TEXT_MODEL,
             messages=[
-                {'role': 'system', 'content': 'You are a wildlife care coordinator. Write a warm, personalized handover message.'},
-                {'role': 'user', 'content': f'{context}\n\nWrite a brief welcome message for the new caretaker.'}
+                {'role': 'system', 'content': 'You are a wildlife care coordinator. Generate a brief, warm milestone message (under 100 chars).'},
+                {'role': 'user', 'content': f'Animal: {animal.name} ({animal.species}). Day {day_number} milestone. Generate a short, encouraging title and body (2 sentences).'}
             ],
-            max_tokens=256,
+            max_tokens=200,
             temperature=0.8
         )
-        notification = response.choices[0].message.content
-        return notification, None
-    except Exception as e:
-        return None, f"⚠️ Notification generation failed: {e}"
+        text = response.choices[0].message.content
+        lines = text.split('\n', 1)
+        title = lines[0][:80]
+        body = lines[1] if len(lines) > 1 else ''
+        return (title, body)
+    except Exception:
+        return None
