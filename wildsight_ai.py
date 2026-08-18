@@ -15,8 +15,8 @@ from datetime import datetime
 
 import rag
 
-TEXT_MODEL = 'llama-3.1-70b-versatile'
-VISION_MODEL = 'llama-3.1-70b-versatile'
+TEXT_MODEL = 'llama-3.2-70b-versatile'
+VISION_MODEL = 'llama-3.2-90b-vision-preview'
 
 # ---- lazy Groq client -------------------------------------------------------
 
